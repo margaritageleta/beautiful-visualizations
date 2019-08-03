@@ -59,7 +59,12 @@ clean_babynames %>%
   summarise(prop_vowel = weighted.mean(vowel, n)) %>% 
   ggplot(aes(year, prop_vowel, color = sex)) + 
   coord_cartesian(ylim = c(0,1)) +
-  geom_line()
+  geom_line()+ geom_point() +
+  labs(title = "Proportion of names ending with vowel",
+       x = "Year", 
+       y = "Proportion ‰",
+       color = "Name",
+       caption = "Data from idescat.cat") + theme_minimal() 
 
 # Probability of name starting by vowel, by gender:
 clean_babynames %>%
@@ -68,7 +73,12 @@ clean_babynames %>%
   summarise(prop_vowel = weighted.mean(vowel, n)) %>% 
   ggplot(aes(year, prop_vowel, color = sex)) + 
   coord_cartesian(ylim = c(0,1)) +
-  geom_line()
+  geom_line() + geom_point() +
+  labs(title = "Proportion of names starting with vowel",
+       x = "Year", 
+       y = "Proportion ‰",
+       color = "Name",
+       caption = "Data from idescat.cat") + theme_minimal() 
 
 library(rlang)
 name_graph <- function(data, name, sex){
