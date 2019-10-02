@@ -49,6 +49,54 @@ if (my.age <= 18) {
 } else print("...")
 
 # LOOPS ... !
+seconds <- 10
+while (seconds > 0) {
+  print(seconds)
+  seconds <- seconds - 1
+  if (seconds == 0) print("BOOM")
+}
+
+# You can add "break" to exit the loop
+range <- c(1:10)
+for (i in range) {
+  print(i)
+}
+
+for (i in 1:length(range)) {
+  print(range[i])
+}
+
+# You can nest loops inside loops ...
+
+# FUNCTIONS !
+
+add.params <- function(param1, param2) {
+  return(param1 + param2)
+}
+
+add.params(4,5)
+
+# Before digging any further into our challenges ...
+# meet the SAMPLE function
+
+(die <- sample(1:6, size = 1))
+
+# Let's check whether you are lucky. Obtain a 6 ... !
+for (throw in 1:3) {
+  if (sample(1:6, size = 1) == 6){
+    print("You are lucky!")
+    break;
+  }
+  if (throw == 3) {
+    print("I cannot help you")
+  }
+}
+
+## EXERCISE 10 MIN ##
+## ============== ##
+# Challenge 1: write a function that returns a power of 2 (of the parameter)
+
+# Challen
 
 
 
