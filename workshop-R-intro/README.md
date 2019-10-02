@@ -15,7 +15,7 @@ Do you want more comparisons? Check out https://www.techrepublic.com/article/r-v
 
 Each language offers different advantages and drawbacks for data science work, having knowledge on each one is better, then we can choose what language suits us better in a specific project. They can be complementary (there even exist pypes between R and Python). So, definitely it is love.
 
-[image]
+![alt text](https://github.com/margaritageleta/beautiful-visualizations/blob/master/workshop-R-intro/pr.jpeg)
 
 ### Download R and RStudio
 
