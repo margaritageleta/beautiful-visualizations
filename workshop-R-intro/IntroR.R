@@ -127,28 +127,22 @@ data <- matrix(runif(10000, 0, 10), 100, 100) # Do not run this twice without ru
 data # Huge? Still that's not big data :)
 
 # Challenge 1: Find the maximum value the whole matrix. Hint: use max()
-max(data)
+
 
 # Challenge 2: Find the mean value of the whole matrix. Hint: use mean()
-mean(data)
+
 
 # Challenge 3: select the first row and subtract it the last column, and compute the sum of the resulting vector.
 # Hint: no hint this time, sorry
-sum(data[,100] - data[1,])
+
 
 # Challenge 4: select the entries which are equal or greater than five
-data[data >= 5]
+
  
 # Challenge 5: determine whether there are more entries >= 5 than < 5. Please return a Logical value.
 # Hint: use length() to count the number of entries
-length(data[data >= 5]) > length(data[data < 5])
 
 
-
-
-
-
-
-
-
-
+# GREAT! NOW YOU KNOW THE BASICS
+# ARE YOU EXCITED ABOUT LEARNING about FACTORS, LOOPS, DATAFRAMES and other COOL THINGS?
+# LET'S CONTINUE --> NEXT STOP: PART2
