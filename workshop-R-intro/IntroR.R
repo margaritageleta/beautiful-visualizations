@@ -83,6 +83,69 @@ actions.1[actions.1 > 0]
 (my.nums <- (1:9)) == c(1, 2, 3, 4, 5, 6, 7, 8, 9)
 
 matrix(my.nums, byrow = TRUE, nrow = 3)
+matrix(my.nums, byrow = FALSE, nrow = 3)
+
+# Now let's aggregate
+actions.week1 <- c(100, 150, -30.78, -50.99, -132.42, 0, -12.35)
+actions.week2 <- c(-50.43, 100, -0.75, -32.45, -12.68, 100, 50)
+actions.week3 <- c(100, 50, -99.99, -45.67, -24.50, -0.68, 0)
+
+actions.vec <- c(actions.week1, actions.week2, actions.week3)
+
+actions.mat <- matrix(actions.vec, byrow = TRUE, nrow = 3)
+# Now rownames and colnames
+colnames(actions.mat) <- days
+rownames(actions.mat) <- c("week1", "week2", "week3")
+actions.mat
+
+# rowSums and colSums
+rowSums(actions.mat)
+colSums(actions.mat)
+
+# Add column --> cbind()
+# Add row --> rbind()
+
+ghostday <- c(0, 0, 0)
+cbind(actions.mat, ghostday)
+
+# Selection
+(mat <- matrix(my.nums, byrow = TRUE, nrow = 3))
+
+mat[1,2]
+mat[3,3]
+mat[2:3, 1:3]
+mat[,1]
+mat[1,]
+mat[,]     # What is that ... ?
+mat[-2,]   # What is that ... ?
+mat[-2,-2]
+
+## EXERCISE 5 MIN ##
+## ============== ##
+set.seed(777)
+data <- matrix(runif(10000, 0, 10), 100, 100) # Do not run this twice without running seed before
+data # Huge? Still that's not big data :)
+
+# Challenge 1: Find the maximum value the whole matrix. Hint: use max()
+max(data)
+
+# Challenge 2: Find the mean value of the whole matrix. Hint: use mean()
+mean(data)
+
+# Challenge 3: select the first row and subtract it the last column, and compute the sum of the resulting vector.
+# Hint: no hint this time, sorry
+sum(data[,100] - data[1,])
+
+# Challenge 4: select the entries which are equal or greater than five
+data[data >= 5]
+ 
+# Challenge 5: determine whether there are more entries >= 5 than < 5. Please return a Logical value.
+# Hint: use length() to count the number of entries
+length(data[data >= 5]) > length(data[data < 5])
+
+
+
+
 
 
 
