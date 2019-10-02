@@ -92,11 +92,54 @@ for (throw in 1:3) {
   }
 }
 
-## EXERCISE 10 MIN ##
-## ============== ##
-# Challenge 1: write a function that returns a power of 2 (of the parameter)
+## EXERCISE 5 MIN ##
+## =============== ##
 
-# Challen
+# Challenge 1: Write a function that returns a power of 2 (of the parameter)
+
+# Challenge 2: Complete this function 
+pass <- function(marks) {
+  # if the marks' mean is equal or above 5, return a TRUE logical
+  
+  # if the marks' mean is 5, return a FALSE logical
+}
+
+pass(c(5.1, 6.7, 4.3, 7.8))
+pass(c(4.95, 4.25, 4.7, 6.1))
+
+# Challenge 3: Complete this function and check your fate !
+# Note: this function has no parameters
+
+my.fate <- function() {
+  # There are 5 cards with magic numbers
+  cards <- c(42, 17, 11, 13, 1)
+  
+  # Please choose with sample() 2 cards:
+  choice <- sample(...)
+  
+  # Compute second CHOSEN card + first CHOSEN card 
+  i  <- ...
+  fate <- (i + my.age) %% 4
+  
+  # Conditional flow (something is missing!)
+  
+  ... (fate == 0) {
+    print ("You will be rich soon")
+  } ... (fate == 1) {
+    print ("You will be lucky soon")
+  } ... == 2) {
+    print ("You will find love soon")
+  } ... (fate == 3) {
+    print ("You will make friends soon")
+  } ... {
+    my.age <- abs(my.age - fate)
+    my.fate() # Recursion in R does also exist !
+  }
+}
+
+# Now check your fate:
+my.fate()
+
 
 
 
