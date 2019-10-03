@@ -20,7 +20,7 @@ my.fate <- function() {
   # Compute second CHOSEN card + first CHOSEN card 
   i  <- sum(cards[choice])
   #print(i)
-  fate <- (i + my.age) %% 4
+  fate <- (i + my.age) %% 6
   #print((i + my.age))
   #print(fate)
   #print("========")
@@ -36,9 +36,13 @@ my.fate <- function() {
   } else if (fate == 3) {
     print ("You will make friends soon")
   } else {
+    print("hi")
     my.age <- abs(my.age - fate)
     my.fate() # Recursion in R does also exist !
   }
 }
+
+my.age <- 20
+for (i in 1:100) my.fate()
 
 

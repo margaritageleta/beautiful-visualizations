@@ -92,7 +92,7 @@ for (throw in 1:3) {
   }
 }
 
-## EXERCISE 5 MIN ##
+## EXERCISE  MIN ##
 ## =============== ##
 
 # Challenge 1: Write a function that returns a power of 2 (of the parameter)
@@ -119,7 +119,7 @@ my.fate <- function() {
   
   # Compute second CHOSEN card + first CHOSEN card 
   i  <- ...
-  fate <- (i + my.age) %% 4
+  fate <- (i + my.age) %% 6
   
   # Conditional flow (something is missing!)
   
