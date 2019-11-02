@@ -34,4 +34,4 @@ To clear the console: `cat("\014")`
 
 ## License
 
-MIT © `3omni
+MIT © `3omni`
