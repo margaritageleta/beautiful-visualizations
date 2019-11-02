@@ -141,5 +141,10 @@ my.fate <- function() {
 my.fate()
 
 
+# AMAZING! 
+# LET'S GO STRAIGHT TO FACTORS, DATAFRAMES and PLOTS!
+# NEXT STOP --> PART3
+
+
 
 

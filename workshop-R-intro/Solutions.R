@@ -42,7 +42,7 @@ my.fate <- function() {
   }
 }
 
-my.age <- 20
+my.age <- 41
 for (i in 1:100) my.fate()
-
+my.fate()
 
