@@ -31,3 +31,7 @@ Create your first R Script clicking on **File > New File > R Script**.
 
 
 To clear the console: `cat("\014")`
+
+## License
+
+MIT © `3omni
