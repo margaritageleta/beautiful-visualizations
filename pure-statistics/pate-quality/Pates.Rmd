@@ -1,0 +1,237 @@
+---
+title: "Linear Model: Testing Pates"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+In a paté tasting, each person involved has to taste and give a score to 5 different pates, which were randomly assigned. The explanatory varirables correspond to:
+
++ The person that has tasted the patés.
++ Paté code.
+
+Both are factors. And several response variables: scores of color, smell, texture, taste and order.
+
+The marks were between 0 and 10, and the order is the preferred order of the taster where 1 means the preferred by the taster.
+
+For each one of the variables that have been scored,
+
+(1) Find the appropriate linear model assuming that conditions for the ANOVA are satisfied. Perform the corresponding tests and interpret them, including multiple comparisons. Is it necessary to apply any kind of data transformation?
+
+```{r warning=FALSE, message=F}
+library(car)
+library(emmeans)
+library(tables)
+library(RcmdrMisc)
+
+dd<-read.csv2("PATE.csv")
+head(dd)
+```
+```{r warning=FALSE, message=F}
+dim(dd)
+```
+The data set has observations of 40 rows and 7 columns. 
+
+## Descriptive statistics
+
+First of all, we are going to perform descriptive statistics:
+```{r warning=FALSE, message=F}
+summary(dd)
+```
+
+Let us transform variables PER (person) and PATE as factors.
+```{r}
+dd$per<-as.factor(dd$per) 
+dd$pate<-as.factor(dd$pate)
+```
+
+## COLOR
+
+We will start off analyzing the variable **COLOR**: we compute the number of observations and the mean and sd of the color scores:
+```{r}
+tabular(pate~color*((n=1)+mean+sd),dd)
+```
+In this table we see that:
+
+(a) Paté 140 is the one with the smallest score.
+(b) Patés 372 and 525 are the ones with the largest scores.
+(c) The variances do not seem to differ much, but the patés with the largest scores seem to have the variance smaller.
+
+In what follows we show the eight scores of color for each pate:
+```{r}
+tabular(pate~mean*color*per,dd)
+```
+From this table it seems that people 3 and 7 tend to give higher scores
+
+##Modelization
+
+We will do two models to compare both: the **TWO-WAY without interaction anova model**:
+$$
+Color_{ij}=\mu+\alpha_i+\beta_j+e_{ij}
+$$
+Where $\alpha_i$ is the paté and $\beta_j$ is the person. The matrix would be of the type:
+$$
+\begin{pmatrix}
+1 & 1 & 0 & \dots & 0\\ 
+1 & 1 & 0 & \dots & 1\\ 
+1 & 0 & 1 & \dots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\ 
+1 & 0 & 1 & \dots & 1
+\end{pmatrix}
+\begin{pmatrix}
+\mu \\ 
+\alpha_1\\ \alpha_2\\\vdots \\ \alpha_i\\\vdots \\
+\beta_1\\ \beta_2\\\vdots \\ \beta_i\\ \vdots \\
+\end{pmatrix}
+$$
+
+And the **ONE-WAY anova model**:
+$$
+Color_{ij}=\mu+e_{ij}
+$$
+```{r}
+summary(one_model<-lm(color~pate, dd))
+```
+```{r}
+anova(one_model)
+```
+```{r}
+Anova(one_model)
+```
+
+From this ONE-way ANOVA model we see:
+
+(a) There are significant differences between the patés, as a consequence of the fact that the **Omnibus test** is significative and that some of the paraemters are significatively different from zero.
+(b) The baseline pate (113) does not seem to be different from pate 140, nor from pate 220.
+(c) The pate explains 33% of the variability observed in the color variables.
+(d) From the ANOVA table we see that the paté is significative, thus it has an influence on the color score.
+(e) From the ANOVA table we see that the Sum of Squares that corresponds to the residuals is larger than the one that corresponds to the paté. Thus, there is more unexplained variability than explained variability.
+```{r}
+summary(two_model<-lm(color~pate+per, dd))
+anova(two_model)
+```
+
+See that the residuals in the anova table in model1 are 48.25, and in model2:  28.65. The effects of person that we do not count in model1 are translated to the error (randomness, residuals).
+
+From model2 we deduce the following things:
+
+(a) Person 3 is clearly different from person 1 (baseline). The rest of the people do not differ significatively from person 1.
+(b) The two factors now explain 60% of the variability in the color variable.
+(c) Looking at the Anova table we see that both factors are significative.
+(d) Looking at the anova table, we see that there is still a lot of variability that remains unexplained (approximattly the same variability explained by the paté).
+(e) Looking at the residual versus fitted plot we see 5 inclined lines that correspond to each one of the pates (és perquè les dades són enteres, que pot comportar complicacions en la normalitat, però fem-ne la QQplot per poder suposar normalitat). In each line there should be 8 circles, one for each person, or less in the case that two or more persons have punctuated equaly a given pate.
+(f) The Normality of the residuals can now be assumed.
+(g) We do not see patterns in the plot.
+
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(one_model, ask=F)
+par(oldpar)
+```
+
+Plotting the residuals versus predicted we observe:
+(a) There are just 5 predicted values, one for each catherogy (paté type) that are equal to the sample mean of each pate. We do not see eight residuals for each pate because some of them are equal.
+(b) There are two patés that show a larger variability on the residuals.
+(c) The residuals do not seem to follow an standarized Normal distribution.
+(d) By plotting the standarized residuals the homocedasticity property is dobutful.
+
+(2) Compare the results if we assume that the person has a significant influence upon the score. 
+
+We are going to assume a **TWO-way anova without interaction**:
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(two_model, ask=F)
+par(oldpar)
+```
+Some additional plots:
+```{r}
+plot(predict(two_model),rstandard(two_model)) 
+abline(h=c(-2,0,2),lty=2)
+
+plot(as.vector(dd$pate),rstudent(two_model)) 
+abline(h=c(-2,0,2),lty=2)
+
+qqPlot(two_model)
+
+qqPlot(two_model,simulate=F,envelope=F)
+```
+
+We think that this model can be accepted as a good model to explain the differences in the color. Nevertheless, it might be interesting to investigate which other features may have an important influence upon the color which have not been taken into account.
+
+Per determinar de quin paté és millor el color, hem de fer les comparacions múltiples, farem comparacions del model1 i del model2 (tot i que model1 és una mica pitjor perquè els residus (errors) són més grans, les persones estan a l'atzar): Conclusió de l'anova: veiem que hi ha efecte del paté i efecte de persona. Quines diferències hi ha entre els pates? (cal fer 10 tests simultanis).
+```{r warning=FALSE}
+(emm1<-emmeans(one_model,~pate))
+```
+```{r warning=FALSE}
+(emm2<-emmeans(two_model,~pate))
+```
+
+Let us perform the multiple comparisons by means of the Tukey methods Remember: levels with the same letter are not statistically different. 
+
+Si el bo és el gran, hem de dir que ho faci a la inversa, reversed=T, (A el millor tractament, b el següent, etc). 
+```{r warning=FALSE}
+CLD(emm1,Letters=letters, reversed=T)
+```
+
+En els models 1 i 2, les estimacions son exactament les mateixes, canvien les desviacions tipus.
+```{r warning=FALSE}
+CLD(emm2,Letters=letters, reversed=T)
+```
+
+El 525 i el 375 no els podem distingir. Tots els que ha sortit amb A son els millors. AB vol dir que no els podem distingir ni dels A ni dels B. A i B no són grups, és simplement per poder distingir els patés. Els millors patés, segons l'estadística del color, són de la marca A: 525 i 372.
+
+```{r warning=FALSE}
+CLD(emmeans(one_model,~pate),Letters=letters, reversed=T, alpha=0.01)
+```
+
+## SMELL
+
+### Modelization
+With **TWO-WAY without interaction anova model**:
+$$
+Smell_{ij}=\mu+\alpha_i+\beta_j+e_{ij}
+$$
+Where $\alpha_i$ is the paté and $\beta_j$ is the person. 
+```{r}
+summary(model<-lm(smell~pate+per, dd))
+anova(two_model)
+```
+ From this TWO-way ANOVA model we see:
+ 
+ (a) The **Omnibus test** is significative. The baseline paté (113) does not seem to be different in smell from the paté 140, 220 and 525.
+ (b) The two factors explain 69% of variability.
+ (c) Looking at the anova table, we see that both factors are significative.
+
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model, ask=F)
+par(oldpar)
+```
+```{r warning=FALSE}
+CLD(emmeans(model,~pate),Letters=letters, reversed=T, alpha=0.05)
+```
+```{r warning=FALSE}
+CLD(emmeans(model,~pate),Letters=letters, reversed=T, alpha=0.01)
+```
+
+
+
+
+
+
+Podriem fer l'anova de la variable ordre (igual que la variable color)? Quan ja tenim col.locats 4 patés, el cinquè ja es fix. L'ordre no compleix la independència. Per tant, l'anova amb ORDRE no es pot fer perquè no compleix el requisit de independència, però hi ha un fet curiós: quan hi ha ordres, hi ha el test no paràmetric de Friedman (*No paràmetric* vol dir que no suposem cap distribució de les dades.), que pot fer l'aproximació de l'anova de l'ORDRE del paté, tenint en compte les persones. Però, d'entrada, no podem plantejar l'anova de l'ORDRE perquè no hi ha indepedència: a continuació veiem que el **test Omnibus** falla.
+
+```{r}
+summary(model<-lm(order~pate+per, dd))
+anova(two_model)
+```
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model, ask=F)
+par(oldpar)
+```
+
+Ens podriem preguntar: *hi ha alguna interacció entre persona i paté?* Hem suposat fins ara que totes les persones puntuaven similar: totes reconeixien que el millor és el mateix i el pitjor el mateix, etc. 
+
+Important to observe that it is not possible to consider a **TWO-way anova with interaction** because in this case we will not have degrees of freedom for the residual sum of squares.
+

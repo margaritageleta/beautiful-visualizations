@@ -1,0 +1,414 @@
+---
+#title: "The Official Guide"
+output:
+  pdf_document: default
+  html_document: default
+---
+##Linear model: Ficus plants
+We have the height, $H$, of the ficus plants and the number of days since it has been planted, *Days*. 
+This data set constitutes an example of data such that requires to transform the response variable by means of the logarithm, and to consider the regression $\log (H) \sim \alpha + \beta \cdot Days$. But as you will see, the model does not verify the *homoscedasticity* hypothesis. Moreover, as you will see, the non-linear regression model $H \sim e^{\alpha+\beta}\cdot Days$ does not verify the *homoscedasticity* property neither (at least it is not clear). Thus the analysis of this model points out the need of using generalized linear models and that is what we are going to do. The significance level is set to be equal to $alpha=0.05$.
+
+```{r warning=FALSE}
+library(car)
+library(emmeans)
+dd<-read.csv2("Ficusdata.csv")
+# head(dd)
+```
+
+Take a glimpse on the descriptive:
+```{r}
+dd$FDays<-as.factor(dd$Days)
+sp(H~Days, dd)
+```
+
+But before starting with GLM models, we shall we have a sneak peek on the usual linear models and see where it doesn't work.
+
+**First model**: the regression line $H$ with respect to the variable $Days$. Fit the data, compute the parameter estimations and interpret them.
+$$
+H = \beta_0 +\beta_1(Days)
+$$
+```{r}
+summary(model1<-lm(H~Days, dd))
+```
+
+The Omnibus test is significative, so the model explains the variability in the data, and the Days parameter is not zero (it is significative). Also, note the R squared is quite high: 88.95% of the variability is captured by our model.
+$$
+H = -0.456364 +0.286780(Days)
+$$
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model1, ask=F)
+par(oldpar)
+```
+
+**1. Residuals vs Fitted**
+
+This plot shows if residuals have non-linear patterns. There could be a non-linear relationship between predictor variables and an outcome variable and the pattern could show up in this plot if the model doesn’t capture the non-linear relationship. If you find equally spread residuals around a horizontal line without distinct patterns, that is a good indication you don’t have non-linear relationships.
+
+What do you think? I see a parabola, where the non-linear relationship was not explained by the model and was left out in the residuals.
+
+**2. Normal Q-Q**
+
+This plot shows if teh residuals are normally distributed. Do residuals follow a straight line well or do they deviate severely? It’s good if residuals are lined well on the straight dashed line. I would not be concerned, but I see some observations that look a little off, observations numbered as 218, 230 and 234.
+
+**3. Scale-Location**
+
+It’s also called *Spread-Location plot*. This plot shows if residuals are spread equally along the ranges of predictors. This is how you can check the assumption of equal variance (*homoscedasticity*). It’s good if you see a horizontal line with equally (randomly) spread points.
+
+What do you think? I observe that the residuals appear randomly spread.
+
+**4. Residuals vs Leverage**
+
+This plot helps us to find influential cases (i.e., subjects) if any. Not all outliers are influential in linear regression analysis (whatever outliers mean). Even though data have extreme values, they might not be influential to determine a regression line. That means, the results wouldn’t be much different if we either include or exclude them from analysis. They follow the trend in the majority of cases and they don’t really matter; they are not influential. On the other hand, some cases could be very influential even if they look to be within a reasonable range of the values. They could be extreme cases against a regression line and can alter the results if we exclude them from analysis. Another way to put it is that they don’t get along with the trend in the majority of the cases.
+
+Unlike the other plots, this time **patterns are not relevant**. We watch out for outlying values at the upper right corner or at the lower right corner. Those spots are the places where cases can be influential against a regression line. Look for cases outside of a dashed line, Cook’s distance. When cases are outside of the Cook’s distance (meaning they have high Cook’s distance scores), the cases are influential to the regression results. The regression results will be altered if we exclude those cases.
+
+What do you think? I see the typical look when there is no influential case, or cases. We do not even see the Cook's distance lines!
+
+Also, let's check how many and what studentized residuals (if there are any)  are greater than 3:
+```{r}
+plot(rstudent(model1),main="rstudent") 
+abline(h=c(-3,-2,0,2,3),lty=2)
+
+for (i in 1:length(rstudent(model1))) if (rstudent(model1)[i] > 3) print(rstudent(model1)[i])
+```
+
+Exactly the ones we have spotted earlier in the QQ-plot!
+```{r}
+# Assessing Outliers
+qqPlot(model1, main="QQ Plot") #qq plot for studentized resid 
+leveragePlots(model1) # leverage plots
+```
+
+218 and 234 could be outliers.
+
+To see the fitted values from a regression object (the values of the dependent variable predicted by the model), access the $fitted.values$ attribute from a regression object with $fitted.values.
+
+You can use the fitted values from a regression object to plot the relationship between the true values and the model fits. If the model does a good job in fitting the data, the data should fall on a diagonal line:
+```{r}
+# Plot the relationship between true values and linear model fitted values.
+
+plot(x = dd$H,                          # True values on x-axis
+     y = model1$fitted.values,          # fitted values on y-axis
+     xlab = "True Values",
+     ylab = "Model Fitted Values",
+     main = "Regression fits of height values")
+abline(b = 1, a = 0)                    # Values should fall around this line!
+```
+
+Again I see a parabola-like tendency...
+
+```{r}
+# Create a dataframe of new data
+new_day <- data.frame(Days = c(10))
+# Predict the value of the new data using
+# the model1 regression model
+predict(object = model1,     # The regression model
+        newdata = new_day)   # dataframe of new data
+```
+$$
+H = -0.456364 +0.286780\cdot(10)=2.411436
+$$
+
+This result tells us that the expected height of the ficus on day 10 is 2.411436, respectively according to our regression model.
+
+Let us define $FDays$ as the variable $Days$ considered as a Factor. This can be done because there are sufficient number of observations for each value of the Days variable. Compare the fits with and without $FDays$ as an extra explanatory variable. Do it by means of the anova test anova(model1,model2). In particular, for the first model considered, compare model $H \sim Days$ with the model $H \sim Days + FDays$.
+
+If you are choosing between a very simple model with 1 parameter, and a very complex model with, say, with 10 parameters, the very complex model needs to provide a much better fit to the data in order to justify its increased complexity. If it can’t, then the more simpler model should be preferred.
+
+To compare the fits of two models, you can use the anova() function with the regression objects as two separate arguments. The anova() function will take the model objects as arguments, and return an ANOVA testing whether the more complex model is significantly better at capturing the data than the simpler model. If the resulting p-value is sufficiently low (usually less than 0.05), we conclude that the more complex model is significantly better than the simpler model, and thus favor the more complex model. If the p-value is not sufficiently low (usually greater than 0.05), we should favor the simpler model.
+
+```{r}
+FDays <- as.factor(dd$Days)
+model1f<-lm(H~Days+FDays, dd)
+anova(model1, model1f)
+```
+
+As you can see, the result shows a Df of 8 (indicating that the more complex model has 8 additional parameters), and a very small p-value (< .001). This means that adding the $FDays$ to the model did lead to a significantly improved fit over the model1. Also, you can easily check in the summary of model1f that R squared has increased up to 96,7% and the residual standard error has decreased:
+```{r}
+summary(model1f)
+anova(model1f)
+```
+
+Given that we have a large number of observations for each value of the variable $Days$, perform the **Levene’s test** test to compare the variances in the different groups and see if the homoscedasticity property may be assumed or not. Levene’s test is about testing equality of variances for a given variable between *groups* split by a categorical variable (i.e. gender, geography), so you cannot use numerical variables (use the factored $Days$ variable). 
+
+Levene's test can be used to answer the following question:
+**Is the assumption of equal variances valid?** Let's check that:
+```{r}
+leveneTest(resid(model1)~FDays, dd) #FDays is a factor variable.
+```
+
+Recall that Levene's test tests the null hypothesis that the homogeneity of variance across groups holds. In other words, the null hypothesis assumes that the variances between heights across ficus plants do not differ significantly. Look for the p-value and determine based on its value whether the null hypothesis might be rejected or not.
+
+2.699e-06<0.001 so we reject null hypothesis. There is no homogeneity of variance in our data. 
+
+Estimate the mean and the standard deviation associated to the variable $H$ when $Days$ is equal to 0, 105 and 150. Remind that the variance of the response variable is constant and equal to the error variance. That is, we ask you to estimate: $\mathbb{E}(H|Days = a)$ and  $Var(H|Days = a)$, for $a=0,105$ and $150$.
+
+```{r}
+# Create a dataframe of the days
+new_days <- data.frame(Days = c(0,105,150))
+predict(object = model1,     # The regression model
+        newdata = new_days,  # dataframe of new data
+        se.fit = TRUE)
+```
+
+$fit$ returns the mean estimations and $residual.scale is the residual standard deviation estimation for for Days=0,105 and 150. You can also compute it with:
+```{r}
+print(cbind(mu=predict(model1,data.frame(Days=c(0,105,150))),sd=summary(model1)$sigma))
+```
+
+**Second model**: the regression parabola $H$ with respect to the variable $Days$. Fit the data, compute the parameter estimations and interpret them.
+$$
+H = \beta_0 +\beta_1(Days)+\beta_2(Days^2)
+$$
+```{r}
+Days2 <- dd$Days^2
+summary(model2<-lm(H~Days+I(Days^2), dd))
+model2f<-lm(H~Days+I(Days^2)+FDays, dd)
+```
+
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model2, ask=F)
+par(oldpar)
+```
+
+From model1, we see that this model captures the non-linear response in the residuals.
+```{r}
+leveneTest(resid(model2)~FDays)
+```
+
+No homocedasticity and also there is something more about that model I don't like. The two variables seem to be highly correlated...
+```{r}
+vif(model2)
+```
+
+**Third model**: the regression line $\log(H)$ with respect to the variable $Days$. This transformation is useful when one wants to stabilize the variances and the variances are approximately a quadratic function of the mean $Var(H_i) \simeq (\mu_i)^2$. Fit the data, compute the parameter estimations and interpret them.
+$$
+\log(H) = \beta_0 +\beta_1(Days)
+$$
+```{r warning=FALSE}
+summary(model3<-lm(log(H)~Days, data = dd))
+```
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model3, ask=F)
+par(oldpar)
+```
+```{r}
+model3f <- lm(log(H)~Days+FDays, data=dd)
+anova(model3, model3f)
+```
+```{r}
+leveneTest(resid(model3)~FDays)
+```
+
+**Fourth model**: the regression line $\sqrt{H}$ with respect to the variable $Days$. This transformation is useful when one wants to stabilize the variances and the variances are approximately a linear function of the mean $Var(H_i) \simeq \mu_i$. Fit the data, compute the parameter estimations and interpret them.
+```{r warning=FALSE}
+summary(model4<-lm(sqrt(H)~Days, data = dd))
+```
+```{r}
+oldpar<-par(mfrow=c(2,2))
+plot(model4, ask=F)
+par(oldpar)
+```
+```{r}
+model4f<-lm(sqrt(H)~Days+FDays, data=dd)
+anova(model4, model4f)
+```
+```{r}
+leveneTest(resid(model4)~FDays)
+```
+
+Look for the p-value and determine based on its value whether the null hypothesis might be rejected or not. 0.3187>0.001 so we accept null hypothesis! We are not sure about it but we accept that there is homogeneity of variance in our data. So this transformation has actually stabilized the variances of the data.
+
+Let's try also the non-linear regression model defined as: $H_i = e^{\alpha+\beta\cdot Days_i} + e_i$, were $e_i$ are iid r.v’s with distribution $N(0, \sigma^2)$. We will take the coefficients from the logarithmic model:
+
+```{r warning=FALSE}
+params<-coef(model3)
+names(params)<-c("a","b")
+summary(model5<-nls(H~exp(a+b*Days),start=params, data=dd))
+sp(resid(model5)~predict(model5),boxplot=F)
+```
+```{r}
+#pp<-predict(model5,data.frame(Days=c(0,105,150))) 
+pp<-exp(coef(model5)[1]+coef(model5)[2]*c(0,105,150)) 
+print(cbind(pp,summary(model5)$sigma))
+```
+```{r}
+leveneTest(resid(model5)~dd$FDays)
+```
+
+##GLM models: Ficus plants
+We define several models, from different families and links:
+```{r warning=FALSE}
+gmodelA <- glm(H~Days, family=gaussian(link="sqrt"), data=dd)
+gmodelB <- glm(H~Days, family=Gamma(link="log"), data=dd)
+gmodelC <- glm(H~Days, quasi(link="log", variance="mu"), data=dd)
+```
+
+```{r warning=FALSE}
+print(gmodelA)
+summary(gmodelA)
+```
+
+The estimation of the dispersion parameter obtained with the Pearson statistic is:
+```{r warning=FALSE}
+summary(gmodelA)$dispersion
+```
+
+The dispersion parameter, as you know, is computed as the quotient of the Pearson Statistic and the degrees of freedom:
+```{r warning=FALSE}
+(PS<-sum(residuals(gmodelA, type="pearson")^2))
+PS/gmodelA$df.res
+#P valor
+2*min(pchisq(PS, gmodelA$df.res), 1-pchisq(PS, gmodelA$df.res))
+#IC
+c(qchisq(0.025, gmodelA$df.res), qchisq(0.975, gmodelA$df.res))/gmodelA$df.res
+```
+```{r warning=FALSE}
+plot(dd$Days,rstandard(gmodelA,ty="pearson"),main="modA")
+abline(h=c(-3,-2,0,2,3))
+for (i in 1:length(rstandard(gmodelA))) if (abs(rstandard(gmodelA)[i]) > 2) {
+  cat("value is ", rstandard(gmodelA)[i], " on day ", dd$Days[i], "\n")
+}
+
+```
+
+```{r warning=FALSE}
+gmodelAf <- glm(H~Days+FDays, family=gaussian(link="sqrt"), data=dd)
+gmodelBf <- glm(H~Days+FDays, family=Gamma(link="log"), data=dd)
+gmodelCf <- glm(H~Days+FDays, quasi(link="log", variance="mu"), data=dd)
+```
+
+```{r warning=FALSE}
+anova(gmodelA, gmodelAf, test="F")
+```
+
+```{r warning=FALSE}
+leveneTest(resid(gmodelA)~FDays)
+sp(sqrt(abs(residuals.glm(gmodelA,ty="pearson")))~predict(gmodelA,ty="link"),boxplot=F,smooth=F,main="modA")
+```
+
+```{r warning=FALSE}
+mm<-predict(gmodelA,data.frame(Days=c(0,105,150)),ty="response")
+print(mmA<-cbind(mu=mm,sd=sqrt(gmodelA$deviance/gmodelA$df.residual)))
+```
+
+```{r warning=FALSE}
+summary(gmodelB)
+```
+
+```{r warning=FALSE}
+leveneTest(resid(gmodelB, type="pearson")~FDays)
+sp(sqrt(abs(residuals.glm(gmodelB,ty="pearson")))~predict(gmodelB,ty="link"),
+   boxplot=F,smooth=F,main="modB")
+```
+
+```{r warning=FALSE}
+predict(gmodelB, new=data.frame(Days=c(150)), se.fit=TRUE, type = "response")
+mm<-predict(gmodelB,data.frame(Days=c(0,105,150)),ty="response")
+print(mmB<-cbind(mu=mm,sd=mm*sqrt(gmodelB$deviance/gmodelB$df.residual)))
+```
+
+
+```{r warning=FALSE}
+summary(gmodelC)
+```
+
+
+```{r warning=FALSE}
+plot(rstandard(gmodelC,ty="pearson"),main="modC")
+abline(h=c(-3,-2,0,2,3))
+plot(dd$Days,rstandard(gmodelC,ty="pearson"),main="modC")
+abline(h=c(-3,-2,0,2,3))
+```
+
+```{r warning=FALSE}
+leveneTest(resid(gmodelC, type="pearson")~FDays)
+sp(sqrt(abs(residuals.glm(gmodelC,ty="pearson")))~predict(gmodelC,ty="link"),
+   boxplot=F,smooth=F,main="modC")
+```
+
+```{r warning=FALSE}
+mm<-predict(gmodelC,data.frame(Days=c(0,105,150)),ty="response")
+print(mmC<-cbind(mu=mm,sd=sqrt(mm)*sqrt(gmodelC$deviance/gmodelC$df.residual)))
+```
+
+```{r warning=FALSE}
+1-gmodelA$deviance/gmodelA$null.deviance
+1-gmodelB$deviance/gmodelB$null.deviance
+1-gmodelC$deviance/gmodelC$null.deviance
+```
+
+
+
+```{r warning=FALSE}
+oldpar<-par(mfrow=c(2,2))
+plot(residuals(gmodelA,type="pearson"))
+abline(h=c(-3,-2,0,2,3), lty=2)
+plot(residuals(gmodelB,type="pearson"))
+abline(h=c(-3,-2,0,2,3), lty=2)
+plot(residuals(gmodelC,type="pearson"))
+abline(h=c(-3,-2,0,2,3), lty=2)
+par(oldpar)
+```
+```{r}
+print(rbind(logLik=c(modA=logLik(gmodelA),modB=logLik(gmodelB),modC=logLik(gmodelC)),
+              AIC=c(AIC(gmodelA),AIC(gmodelB),AIC(gmodelC)),
+              "R2"=c(1-gmodelA$deviance/gmodelA$null.deviance,1-gmodelB$deviance/gmodelB$null.deviance,1-gmodelC$deviance/gmodelC$null.deviance)))
+
+```
+
+##Linear Regression
+The dataset includes data on 150 diamonds sold at an auction. Here are the first few rows of the dataset:
+```{r include=FALSE}
+library(yarrr)
+```
+```{r}
+head(diamonds)
+```
+
+Our goal is to come up with a linear model we can use to estimate the value of each diamond as a linear combination of three independent variables: its *weight* and *clarity*. The linear model will estimate each diamond’s value using the following equation:
+$$
+Value=\beta_0+Weight\cdot\beta_1+Clarity\cdot\beta_2
+$$
+where $\beta_1$ is the increase in value for each increase of 1 in weight, $\beta_2$ is the increase in value for each increase of 1 in clarity (etc.). Finally, $\beta_0$ is the baseline value of a diamond with a value of 0 in all independent variables (the *intercept*). Because $Value$ is the dependent variable we will specify the formula as:
+```{r}
+diamonds.lm <- lm(formula = value ~ weight + clarity, data = diamonds)
+diamonds.lm
+```
+
+To see the results of the regression analysis, including estimates for each of the beta values, we’ll use the $summary()$ function:
+```{r}
+summary(diamonds.lm)
+# Which components are in the regression object? access names(diamonds.lm).
+```
+The resulting regression model is:
+$$
+Value=145.446+Weight\cdot2.219+Clarity\cdot22.036
+$$
+
+Once you have created a regression model with $lm()$, you can use it to easily predict results from new datasets using the $predict()$ function.For example, let’s say I discovered 3 new diamonds with the following characteristics: 
+
++ Diamond 1: weight = 20, clarity = 1.5.
++ Diamond 2: weight = 10, clarity = 0.2.
++ Diamond 3: weight = 15, clarity = 5.0.
+
+Which of these has more value respectively according to our regression model?
+
+I’ll use the $predict()$ function to predict the value of each of these diamonds using the regression model $diamond.lm$ that I created before. The two main arguments to $predict()$ are $object$ – the regression object we’ve already defined), and $newdata$ – the dataframe of new data. Warning! The dataframe that you use in the $newdata$ argument to $predict()$ must have column names equal to the names of the coefficients in the model. If the names are different, the $predict()$ function won’t know which column of data applies to which coefficient and will return an error:
+
+```{r}
+# Create a dataframe of new diamond data
+diamonds.new <- data.frame(weight = c(20, 10, 15), clarity = c(1.5, 0.2, 5.0))
+
+# Predict the value of the new diamonds using
+#  the diamonds.lm regression model
+predict(object = diamonds.lm,     # The regression model
+        newdata = diamonds.new)   # dataframe of new data
+```
+
+To include interaction terms in a regression model, just put an asterix (*) between the independent variables. 
+
+

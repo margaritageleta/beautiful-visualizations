@@ -1,0 +1,171 @@
+---
+title: 'A love story of LM and GLM: Vitamin C in Orange juice'
+output:
+  pdf_document: default
+  html_document: default
+---
+One wants to compare the evolution in time of the Vitamin C level of an orange juice, as a function of: the type of container and the conservation temperature. To that end, three conservation methods where considered: "a", "b" and "c".
+
+For each conservation method, and during 12 weeks, two units of orange juice where analyzed. The structure of the dataset is as follows: the first column corresponds to the Treatment: conservation method, second column corresponds to Week: and it indicates the time after packaging, the third column indicates corresponds to VitC: level of vitamin C that has been observed.
+```{r message=FALSE}
+library(car)
+library(tables)
+library(emmeans)
+dd <- read.csv2("vitc.csv")
+head(dd)
+```
+
+It is supposed that the Vitamin C level evolves following the exponential function:
+$$
+VitC=\alpha_ie^{-\beta_i\cdot Week},
+$$
+
+with $\alpha_i > 0$ and $\beta_i > 0$, and that these parameters may depend on the conservation method, indicated by the subscript $i$. Assuming that in the moment of packaging may exists differences between the levels of Vitamin C, and using a significance level equal to 5%, answer the following questions:
+
+(a) Define a generalized linear model with the "gamma" family, use it to check whether the treatments lose Vitamin C at the same velocity, that is if $\beta_1=\beta_2=\beta_3$ or not, and also to see if the three values of $\alpha_i$ are or are not statistically equivalent. From this model, estimate $\alpha_i$. Are they statistically different? Estimate $\beta_i$. Are they statistically different?
+
+```{r}
+sp(vitc~week|treat, smooth=F, data=dd)
+scatterplot(log(vitc)~week|treat,smooth=F,data=dd)
+```
+
+From the scattered plot we see a clear influence of the week in the loss of vitaminC especially in conservation methods different from b. Conservation method a is the one that seems to lose vitaminC faster.
+
+## Model with different intercepts and slopes
+Given that the VitaminC of an orange juice is an exponential fucntion of the Week, in order to fit a linear model, it is necessary to apply a logarithmic transformation to the response variable.
+Important to observe that, assuming that log(VitaminC) is normal distributed is equivalent, by definition, to assume that VitaminC follows a log-normal distribution. So, by doing that we are changing the distribution of the response variable.
+The first model we fit contains the main effects as well as the interaction term.
+
+```{r}
+summary(model.lm<-lm(log(vitc)~treat*week, data=dd))
+```
+
+We do not observe differences statistically significatives between the different levels of treatment (conservation methods). To be sure about the fact that the treatment is not significant, we compute the type III sums of squares.
+```{r}
+Anova(model.lm,ty=3)
+```
+
+The type III sums of squares ensures that the treatment is not significatively different from zero and thus, we can remove it from the model. Important to know that sometimes if the interaction is significant and one of the main effects is not, one may prefer to leave in the model the main effect term of the not significant factor.
+
+The just fitted model allows different intercepts for the three groups, Thus the predicted value in the zero week (initial moment) will be different. This is appreciated in the following scatterplot:
+```{r}
+scatterplot(predict(model.lm)~week|treat,dat=dd)
+```
+
+
+In what follows we estimate the marginal means (emm) and we compare them in pairs using the Tukey method, at week zero. To do that at week zero is very important, because it will allow us to conclude if at the initial moment, all the orange juices had the same vitaminc level.
+```{r}
+emmt<-emmeans(model.lm,~treat|week,at=list(week=c(0))) 
+print(pairs(emmt))
+```
+
+We see that the means are not statistically different from zero at week zero. This allows us to say the the vitaminC level at the initial point (week zero) is the same for all conservation methods, and it is estimated by the model intercept 3.82038. Observe that in the case where two conservation methods differ in the vitaminC level at the origin, then we could not be able to ensure if the differences found in the lose of vitaminC between two conservation methods were due to the conservation method, or simply a consequence of the fact that we started with different vitaminC levels.
+
+Multiple comparison of the three slopes:
+```{r}
+emmm<-emtrends(model.lm,~treat,var="week") 
+print(pairs(emmm))
+```
+
+Slopes of threatments a and c are not statistically different while the other pairs are not.
+
+###Residual analysis of the first model
+```{r}
+plot(fitted(model.lm),resid(model.lm)) 
+abline(h=0,lty=2)
+oldpar<-par(mfrow=c(2,2)) 
+plot(model.lm,ask=F)
+par(oldpar)
+```
+
+We can accept the normality, independence and homocedasticity properties of the errors.
+
+## Model with the same intercepts and different slopes
+The second model we fit is the one without the treatment (conservation method) as main effect.
+```{r}
+summary(model.lm2<-lm(log(vitc)~week+treat:week, data=dd))
+```
+
+Now we clearly see that the week and the interaction are clearly significant.
+
+The week coefficient is equal to -0.1648 which may be interpreted as the decrese in log(vitaminC) by increasing one unit the week if the orange juice comes from hte conservation method a. Thus, if we denote by $VitaminC$ the level of vitaminC in a given week of an orange juice of conservation method a, and by $VitaminC*$ the corresponding level one week later, we have that:
+$$
+VitaminC*=e^{-0.1648}\cdot VitaminC
+$$
+
+if orange juice follows the conservation method a. The decrease in log(vitaminC) for an orange juice of conservation methods b and c will be estimated by
+-0.1648 + 0.1246 = -0.04 and -0.1648 + 0.04778 = -0.117 respectively. From where one has that:
+$$
+VitaminC*=e^{-0.1648+0.1246}\cdot VitaminC
+$$
+
+if orange juice follows the conservation method b and:
+$$
+VitaminC*=e^{-0.1648+0.04778}\cdot VitaminC
+$$
+
+if orange juice follows the conservation method c. Next it appears the scaterplot of the predicted values as a function of the week for the three conservation methods:
+```{r}
+scatterplot(predict(model.lm2)~week|treat,dat=dd)
+```
+
+Important to know if the slopes of the predicted models are statistically different. The slopes correspond to the estimated trends of the model.
+```{r}
+emmm<-emtrends(model.lm2,~treat,var="week") 
+pairs(emmm)
+```
+
+For each treatment we obtain the slope, its standard deviation and the corresponding confidence interval. Observe that the slope stimation for treatment a corresponds to the coefficient of the week in the model. And the other two estimations correspond to the values that we have computed before.
+
+With the sentence *pairs*, we perform the two by two comparison of the slopes. The consequence is to reject all the null hypothesis and to conclude that the slopes between conservation methods are statistically different.
+
+###Residual analysis of the second model
+```{r}
+oldpar<-par(mfrow=c(2,2)) 
+plot(model.lm2,ask=F)
+par(oldpar)
+```
+
+Again the residual analysis allows us to accept the linear model assumptions, and to conclude that this second model is also satisfactory.
+
+In order to choose one of the two models, we can use the adjusted $R^2$. As it can be seen, the adjusted $R^2$ is a little bit larger in the second model, thus, we consider the second model as the more appropiate one.
+
+## GLM Gamma model
+Quin link fem servir? EL logaritme, la part lineal està a l'exponent i per tant si volem aïllar la part lineal hauriem d'utilitzar el link log. El tractament és l'efecte que podriem eliminar si dóna el mateix en els tres grups. Però a la descriptiva es veu que hi ha diferències. Per això, ho inclourem.
+```{r}
+summary(model<-glm(vitc~treat*week, family=Gamma(link="log"), data=dd))
+```
+
+Hem de fer els diagnòstics i l'estudi dels efectes. Una visió descriptiva del models:
+```{r}
+residualPlot(model, ty="pearson")
+```
+
+És igual si agafem el predictor lineal o la Vitamina C predita, o si agafem els residuals de Pearson o els de la Deviància. Han d'anar al voltant de zero i no hem de veure patrons. La concentració que veiem és simplement una qüestions de com han sortit aquestes dades. No veiem cap patró, la gràfica és acceptable. Podem tenir idea si les variàncies van canviant amb la següent gràfica:
+```{r}
+scatterplot(predict(model), sqrt(abs(resid(model))), smooth=F, boxplot=F)
+```
+
+Les variàncies van disminuint una mica. 
+```{r}
+sp(predict(model)~dd$week|dd$treat, smooth=F)
+points(dd$week, log(dd$vitc), pch="+", col=dd$treat)
+```
+
+Suposem que acceptem el model i que els diagnòstics són acceptables. EL primer pas és fer le test Anova (II).
+```{r}
+Anova(model, test.statistic="F")
+```
+
+```{r}
+CLD(emmg<-emmeans(model, ~treat|week, at=list(week=c(0,12))), reversed = TRUE)
+plot(emmg)
+```
+
+```{r}
+(emmt<-emtrends(model, ~treat, var="week"))
+print(pairs(emmt))
+```
+
+The means are not statistically different on day 0, the slopes of treatment a and c are not statistically different. The one that differs is c.
+

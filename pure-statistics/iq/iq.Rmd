@@ -1,0 +1,125 @@
+---
+title: 'Linear Model: Intelligence Quotient and Pedagogical Methods'
+output:
+  pdf_document: default
+  html_document: default
+---
+The aim is to compare the scores (p) of two pedagogical methodologies (m) as a function of the intelligence quotient (c). Perform the parameter estimation as well as the hypothesis tests to see if the parameters are significantly different from zero or not. Moreover, perform the appropriate tests to answer the following questions:
+
+(a) **ANCOVA**: can we consider that the two lines are not statistically different (M1 and M2)? **El mètode afecta a la puntuació? El coeficient de inteligència afecta a la puntuació? Els mètodes afecten de la mateixa manera, o de forma diferent, segons el coeficient de inteligència?**
+
+```{r warning=FALSE, message=FALSE}
+library(car)
+library(emmeans)
+library(tables)
+library(RcmdrMisc)
+
+dd<-read.csv2("comp line.csv")
+head(dd)
+```
+```{r warning=FALSE, message=FALSE}
+dim(dd)
+```
+
+The data set contains 22 rows corresponding to individuals, and four columns. The first column corresponds to the pedagogical methodology followed by the student. The second column contains the inteligence quotient of the individual and the third and fourth columns contain scores. 
+
+*We will first work with the column denoted by $P$.*
+This type of analysis is called **ANCOVA** because as explanatory variables we have categorical as well as continuous variables. In this case we have one of each type. Thus, this situation corresponds to the easiest ANCOVA analysis.
+
+## Descriptive statistics
+
+We plot the score as a function of the intelligence coefficient, using a different line for each pedagogical methodology.
+```{r warning=FALSE, message=FALSE}
+sp(P~C|M, smooth=F, dat=dd)
+abline(v=c(90,105,120),lty=2,col="blue")
+```
+
+We clearly see better results for the pedagogical method number 2. The score is always higher independetly of the intelligence coefficient. It can be seen that the lines are quite parallel ($\sim$ sembla que no hi hagi interacció). It seems that both - the intelligence quotient as well as the method - will have a significant influence upon the score.
+
+(b) Can the two lines be considered parallel lines?
+(c) Can the two intercepts be considered not statistically different?
+
+## Modelling with interaction
+
+We start fitting a model with interaction. This means that we allow the influence of the inteligence quotient  upon the score to be different in the two methods. If the interaction term is significant this would mean that the two slopes are statistically different and that the inteligence quotient has a different effect upon the scores for the two methods.
+
+$$
+P_{ij} = \mu+ \alpha_i + \nu C_j + \beta_iC_j + e_{ij}
+$$
+
+Where: $i$ is the method, $j$ is the the intelligence quotient, $\alpha_i$ és l'efecte principal del mètode $i$, $\mu$ és constant per tothom, $\nu C_j$ és l'efecte principal del coeficient de intel.ligència (*CI*) i $\beta_iC_j$ és l'efecte de la interacció *mètode-CI*.
+
+Si $\beta_i$ fossin zero, tindriem dues rectes amb el mateix pendent (dues rectes paral.leles). En canvi, si $\beta_i \neq 0$ tenim dues rectes que no són paral.leles (= no hi ha interacció).
+
+**Com definim el model?** Tindrem un factor que és el mètode i una covariable que és el CI. A different intercept will be interpreted as that the two methods return different results. We first define the method as a categorical variable:
+
+```{r warning=FALSE}
+# We will use first the scores "P":
+dd$M<-as.factor(dd$M)
+summary(model<-lm(P~M*C, dd))
+```
+```{r warning=FALSE}
+oldpar<-par(mfrow=c(2,2))
+plot(model, ask=F)
+par(oldpar)
+```
+
+**Omnibus test**: clarament tenim diferències. We see from this first analysis that the interaction and the method 2 are not significant. Probably the method is not significant because of the interaction term. Doing the Anova type III we will see if the method is actually significant or not:
+```{r warning=FALSE, message=FALSE}
+Anova(model)
+```
+
+It turns out that the method and the interaction are not significant. Let us fit the model without interaction.
+
+## Modelling without interaction
+```{r warning=FALSE, message=FALSE}
+summary((mP2<-lm((P~M+C), dd)))
+```
+
+We see that once the interaction is suppressed, both explanatory variables are significant. Thus, we conclude that the obtained scores significatively depend on the inteligence quotient but also on the method. 
+
+The fact that the interaction is not significative means that the way in which the inteligence quotient affects upon the scores is the same for both methods. We will have thus two different lines, one for each method with the same slope but different intercepts.
+
+Also, notice that the two variables explain 96% of the variability in the response variable.
+```{r warning=FALSE, message=FALSE}
+Anova(mP2)
+```
+
+From the Anova we also see that both explanatory variables have a significant influence upon the score. Let us see if the assumptions (hypotheses) of the linear model are satisfied.
+
+## Model Diagnostics
+```{r warning=FALSE}
+oldpar<-par(mfrow=c(1,2))
+plot(fitted(mP2), resid(mP2))
+abline(h=0, lty=2)
+residualPlot(mP2)
+par(oldpar)
+```
+```{r warning=FALSE}
+oldpar<-par(mfrow=c(2,2))
+plot(mP2, ask=F)
+par(oldpar)
+```
+
+The Normality, independence and homocedasticity assumptions may be acccepted. Which allow us to accept
+the additive model as a good model to explain the variability in the puctuation variable.
+
+In what follows we compute the estimated marginal means (emmeans) for the three coefficient of inteligence levels required. Observe that the value of the method appears to be a weighted mean of one and two (the design is not balanced in this case).
+
+(d) For each one of the following values of intelligence quotient c: 90, 105 y 120, which differences do exists in the scores for each one of the methodologies?
+
+```{r}
+(emm<-emmeans(mP2,~M|C, at=list(C=c(90, 105, 120))))
+```
+```{r}
+CLD(emm,Letters=letters, reversed=T)
+```
+```{r}
+pairs(emm)
+```
+
+Són clarament diferents a 90, 105 i 120. Almenys en aquest rang (90-120). Podem demanar quins son els pendents?
+```{r}
+(emmp<-emtrends(mP2,~M, var="C"))
+```
+

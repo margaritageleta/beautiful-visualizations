@@ -1,0 +1,95 @@
+---
+title: "Production fails"
+output:
+  pdf_document: default
+  html_document: default
+---
+A study of the compressive strength of an alloy fastener used in the construction of an aircraft was performed. Ten pressure loads, increasing in units of 200 psi from 2500 psi to 4300 psi, were used with different numbers of fasteners being tested at each of these loads. Plot the proportion of failures as a function of the loads.
+```{r warning=FALSE, message=FALSE}
+library(car)
+dd<-read.csv2("ex7.csv")
+head(dd)
+sp(failing/size~Load,dd,smooth=F,boxplot=F)
+```
+
+Define the GLM model that may be appropriate to fit these data and justify why it is appropriate. Assume that you already have your $\hat{\beta}$ vector. Deduce the formula to obtain the $\hat{p}_i$, that is the probability that the fasten fails at a given load pressure $i$. Fit the data with your model, and interpret the parameters of the model.
+
+Since the sample size is defined and we want to analize the number of fails, the appropriate model would the Binomial. We use $cbind$ to enter the number of "yes" (failed) and "no" (not failed). We use the canonical link, the link is defined inside the parentheses after the type of distribution. If leave the parentheses empty, it will use the canonical link by default. Also, if we want to use the canonical link, we can even leave out the parentheses:
+```{r}
+m<-glm(cbind(failing,size-failing)~Load,family=binomial(link=logit),dd)
+summary(m)
+# m$family
+```
+
+In LM the distributions are exact. In GLM the results are asymptotic (because the distribution is approximate). The dispersion parameter is $\phi=1$. La deviància deguda al model és la diferència entre la Null Deviance i la Residual Deviance.
+```{r}
+m$null.deviance-m$deviance
+anova(m)
+```
+
+The linear predictor $\eta=X\beta$. With $logit(\mu)=\eta$ we can compute $p_i=\mu=logit^{-1}(\eta)=\frac{e^\eta}{1+e^\eta}$:
+```{r}
+# Linear predictors:
+(eta<-m$coefficients[1]+m$coefficients[2]*dd$Load)
+# Predicted probabilities:
+(p<-exp(eta)/(1+exp(eta)))
+# The values are n*p:
+(dd$size*p)
+```
+
+The same can be done with $predict()$:
+```{r}
+predict(m, ty="link")
+predict(m, ty="response")
+```
+
+The red points are the predictions that we have computed:
+```{r}
+plot(dd$Load, p,col="red",pch="+")
+Loads<-(25:45)*100
+etas<-m$coefficients[1]+m$coefficients[2]*Loads
+ps<-exp(etas)/(1+exp(etas))
+lines(Loads,ps,col="red")
+```
+
+Let's calculate the Residuals: there are two types of residuals - the Pearson residuals and the Deviance residuals. The most intuitive ones are the Pearson's. We compute them as:
+```{r}
+resid(m, ty="pearson")
+```
+ 
+And the values are $\frac{y_i-\hat{\mu}_i}{\sqrt{V(\hat{\mu}_i)}}$:
+```{r}
+n <- dd$size
+(pearson.residuals<-(dd$failing-n*p)/sqrt(n*p*(1-p)))
+```
+
+Per fer una gràfica de diagnòstic per veure si l'ajust és bo o no, podriem fer:
+```{r}
+residualPlot(m, ty="pearson")
+```
+
+Perquè sigui bo, les variàncies han d'anar al voltant de zero i no hi ha d'haver patrons, la variància ha de ser constant.
+
+Si haguèssim d'estimar el paràmetre de dispersió, l'estimariem a partir de l'estadístic de Pearson. També, si volem comprovar si sobredispersió o subdispersió, es faria mitjançant l'estadístic de Pearson. Càlcul de l'estadístic de Pearson (suma dels quadrats dels residuals de Pearson):
+```{r}
+(pearson.statistic<-sum(pearson.residuals^2))
+```
+
+Ha d'estar al voltant de 1. Podem fer el test de la chi quadrada: si acceptem $H_0: X^2 = 1$ vol dir que no detectem ni sobredispersió ni subdispersió. Si rebutgem ka hipòtesi nul.la i acceptem $H_1: X^2 \ne 1$ aleshores estem segurs que hi ha sobredispersió o subdispersió.
+```{r}
+pchisq(pearson.statistic*m$df.residual,m$df.residual) # cua inferior
+pchisq(pearson.statistic*m$df.residual,m$df.residual,lower.tail=F) # cua superior (simètrica)
+# p-valor del 5%
+(pvalor<-2*min(pchisq(pearson.statistic*m$df.residual,m$df.residual),
+               pchisq(pearson.statistic*m$df.residual,m$df.residual,lower.tail=F)))
+```
+
+EL p-valor ha sortit no significatiu, per tant acceptem hipòtesi nul.la. Si hi hagués alguna cosa, en tot cas seria subdispersió, ja que l'estadístic de Pearson ha sortit més petit que 1. La forma en general per calcular el p-valor seria dos vegades el mínim de la cua per l'esquerra i la cua per la dreta. O sinó també podem buscar l'interval de confiança amb chi quadrada de 2,5% dividint pels graus de llibertat:
+```{r}
+(IC95<-c(qchisq(0.025,m$df.residual)/m$df.residual,
+         qchisq(0.975,m$df.residual)/m$df.residual))
+```
+
+If a statistic is significantly different from 1 at the 0.05 level, then the 95% confidence interval will not contain 1. Since 1 is contained, it is not significantly different from 1 and we accept null hypothesi.
+
+

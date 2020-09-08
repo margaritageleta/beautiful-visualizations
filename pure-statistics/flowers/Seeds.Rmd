@@ -1,0 +1,10 @@
+---
+title: "Seeds"
+output: html_document
+
+```{r}
+library(car)
+dd<-read.csv2("seeds.csv")
+head(dd)
+```
+

@@ -1,0 +1,101 @@
+---
+title: "Milk Production"
+output: html_document
+---
+
+```{r}
+#library(RcmdrMisc)
+library(car)
+dd <- read.csv2("diaryp.csv")
+dd$lDays<-log(dd$Days)
+sp(PROD~Days, smooth=F, boxplots=F, data=dd)
+```
+Les dades creixen rapidament i despres van baixant a poc a poc. La recta verda es la recta de regressio i es veu que no es un bon model.
+
+```{r}
+with(dd,plot(Days,exp(predict(lm(log(PROD)~Days+I(log(Days))))),ty="l",ylim=c(min(PROD),max(PROD))))
+with(dd,points(Days,PROD,col="red",pch="+"))
+```
+Si en comptes de dibuixar la recta de regressio dibuixem el que surt estimat amb el logaritme de la produccio, que adapta bastant be.
+
+Anem a plantejar els models lineals generalitzats.
+Li passem la variable i el predictor lineal, li diem la familia i quin link volem utilitzar, perque si no diem res, ens agafa el link canconic, i finalemnt,quines dades hem d'utilitzar. Quasi es quasiversemablança, vol dir que no sabem quina distribucio es, i per aixo a mes a mes hem de donar la funcio variancia. I donen  exactament el mateix excepte una petita cosa que remarcarem a continuacio.
+```{r}
+summary(mg<-glm(PROD~Days+lDays,family=Gamma(link="log"),data=dd))
+```
+```{r}
+summary(glm(PROD~Days+lDays,family=quasi(link="log",var="mu^2"),data=dd))
+```
+AIC no pot calcular perque no sap com calcular la log versemblança.
+
+```{r}
+with(dd,plot(Days,predict(mg,ty="response"),ty="l",ylim=c(min(PROD),max(PROD))))
+with(dd,points(Days,PROD,col="red",pch="+"))
+```
+Les dades varien mes a dalt que a baix.
+```{r}
+plot(mg,which=1)
+plot(dd$Days,resid(mg))
+abline(h=0,lty=2)
+```
+
+```{r}
+plot(predict(mg), resid(mg))
+abline(h=0,lty=2)
+residualPlot(mg)
+```
+```{r}
+plot(resid(mg, ty="pearson"))
+points(resid(mg, ty="deviance"), col="red",pch="+")
+```
+```{r}
+summary(mn<-glm(PROD~Days+lDays,family=gaussian(link="log"),data=dd))
+# summary(glm(PROD~Days+lDays,family=quasi(link="log",var="constant"),data=dd))
+```
+
+```{r}
+with(dd,plot(Days,predict(mn,type = "response"),ty="l",ylim=c(min(PROD),max(PROD))))
+with(dd,points(Days,PROD,col="red",pch="+"))
+```
+
+```{r}
+plot(mn,which=1)
+plot(dd$Days,resid(mn))
+abline(h=0,lty=2)
+```
+```{r}
+plot(predict(mn), resid(mn))
+abline(h=0,lty=2)
+residualPlot(mn)
+```
+```{r}
+Anova(mg, test="F")
+```
+Fa Anova a partir de les deviancies, i pot fer tests diferents... F, Chi. Lo habitual es test F.
+L'efecte els dies i el log dies es signifcatiu.
+```{r}
+Anova(mn, test="F")
+```
+```{r}
+1-mn$dev/mn$null.dev
+```
+La proporcio de deviancia que explica el model. (Coeficient de determinació).
+```{r}
+1-mg$dev/mn$null.dev
+```
+
+```{r}
+sp(sqrt(abs(resid(mg,ty="deviance")))~predict(mg),boxplots=F,smooth=F)
+```
+```{r}
+sp(sqrt(abs(resid(mg,ty="pearson")))~predict(mg),boxplots=F,smooth=F)
+```
+hauriem de veure una recta horitzonatl,vol dir que no es detecta cap creixement de variancies segons la gamma. Però, en el model normal veuriem que visualment el model normal no compleix be la variancia. La funcio de variancia es mes adecuada de mu quadrat que la constant de la normal.
+```{r}
+sp(sqrt(abs(resid(mn,ty="deviance")))~predict(mn),boxplots=F,smooth=F)
+sp(sqrt(abs(resid(mn,ty="pearson")))~predict(mn),boxplots=F,smooth=F)
+```
+
+
+
+

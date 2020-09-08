@@ -1,0 +1,169 @@
+---
+title: "Linear model: Fattening of piglets"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+To see if the dose of a sweetener improves the fattening of piglets, one experiment was performed. A set of piglets with similar conditions where selected and 5 different sweetener doses where considered and have been randomly assigned to the piglets. The **response variable** is the *average daily gain*, ADG, and the
+**explanatory variable** is the *sweetener dose*:
+
+(1) Define and fit the linear model appropriate to this situation.
+$$
+Y_{ij} = \mu + \alpha_i + e_{ij} \quad e_{ij} \sim N(0, \sigma^2)
+$$
+Where $\alpha_i$ is the factor and $j$ are the repetitions. Each $\mu_i = \mu + \alpha_i$. $\mu$ of the complete model, the groups all together.
+
+```{r warning=FALSE, message=F}
+library(car)
+library(emmeans)
+library(tables)
+library(RcmdrMisc)
+
+dd<-read.csv2("ADG.csv")
+head(dd)
+```
+We perform descriptive statistics:
+```{r}
+summary(dd)
+```
+*Observation*: the dose has to be a factor, not a covariate! First of all, we check whether it is a factor in the data set:
+```{r}
+is.factor(dd$DOSE)
+```
+And if we plot a scatter plot, we would obtain a regression line, but we do not want that, so we factor the variable:
+```{r}
+dd$DOSE<-as.factor(dd$DOSE)
+sp(ADG~DOSE,dd,smooth=F)
+```
+This is the boxplot of ADG for each dose. 
+```{r}
+tabular(DOSE~ADG*((n=1)+mean+sd),dd) # information for each dose group.
+```
+And now, the plot of means with its confident intervals:
+```{r warning=FALSE}
+with(dd, plotMeans(ADG, DOSE, error.bars="conf.int",level=0.95, connect=TRUE))
+```
+
+We clearly observe that:
+
+(a) As the dose increases, the adg also increases. Nevertheless, the last two doses are very similarly.
+(b) We do not see big differences in the variability within the doses (homocedasticity property), nevertheless 5 observations are very few, in general.
+(c) The symmetry of the adg distribution depends on the dose level, the first and the fourth doses are the ones that clearly have a lack of simmetry.
+
+Com que el nostre objectiu és comparar si s'engreixen igual o no amb diferents dosis d'edulcorant, primer de tot haurem d'**ajustar el model**. Després haurem de contrastar emb el **test Omnibus**, per saber si el model explica la variabilitat o no (si hi ha efectes o no, per les dosis). Després, fer el **test Anova** per mirar efecte per efecte. I finalment, per veure les diferències entre les dosis i quina dosi va millor, haurem de fer les **comparacions múltiples** (de Tukey).
+
+We define the linear model:
+```{r warning=FALSE}
+summary(mod<-lm(ADG~DOSE,dd))
+```
+El que fa és calcular per cada dosi - l'estimació de l'esperança. I per cada una, també podem visualitzar l'interval de confiança:
+```{r warning=FALSE}
+(emmip(mod,~DOSE,CIs=T))
+```
+Les linies verticals son les desviacions tipus. Són totes pràcticament de la mateixa longitud perquè n=5 en cada grup. 
+
+This model corresponds to what is called the **One-way ANOVA**. From the summary we can see:
+
+(a) The first dose has been taken as baseline. In consequence the ADG estimation for the first does equal to the model intercept. That is to say, the intercept is the mean of the first dose. 
+
+*Obseravció*: els paràmetres que obtenim al *summary* no ens interessen gens. Perquè ens interessa $\mu + \alpha_i$ i l'espreança del segon és el primer paràmetre més el segon, l'esperança del tercer és el primer paràmetre més el tercer i axió succesivament.
+
+(b) There are not significative differences between the first and second doses since the parameter associated to the second dose is not significant.
+(c) The last three doses give place to a ADG significatively different to the one of the first dose, since their parameters are significant.
+(d) To give a dose of 15 instead of 0 or 8 increases the ADG in 27.85 units. if the dose is 20, the increment is of 34.717 units and if we administrate a dose of 30, then the increment is of 34.68 units, always with respect to doses 0 and 8 which are not statistically different.
+(e) The model explains 78% of the variability. Thus 78% of the differences observed in the ADG are a direct consequence of the sweetener dose.
+(f) We reject the null hypothesis of the Omnibus test. Thus, the sweetener has a significant influence on the ADG.
+(g) The error standard deviation is estimated by $\hat{\sigma} = 8.957$.
+
+(2) What can we conclude from the ANOVA test?
+
+Anem a fer el test Anova. En aquest cas és redundant, perquè l'Omnibus ja ens dóna informació. Hi ha diferents formes de calcular la suma de quadrats. Hi ha dues comandes diferents una pel tipus I (minúscula) i l'altra es pel tipus II o III (majúscula, si no especifiquem res II, si especifiquem - III). El tipus II i III difereixen quan no hi ha igualtat de repeticions. En general, el més recomanable és del tipus II.
+
+```{r warning=FALSE}
+anova(mod)
+```
+The type of sums of squares computed by the ANOVA sentence are the type I sums of squares.
+
+We can see by means of the F test that the factor has a significant influence upon the response variable. The sum of squares that corresponds to the factor is equal to 5780.1 while the sum of squares devoted to the error is equal to 1604.6.
+
+In what follows, by means of the Anova sentence, we are going to compute the type II sums of squares that, in this case will be equal to the type I because we have got just one factor. 
+```{r warning=FALSE}
+Anova(mod)
+```
+Quina conclusió podem extreure: té la dosi cap efecte sobre el guany mig diari? Sí, té un efecte molt clar. En dir això, la probabilitat d'equivocar-me és petitíssima, pel test omnibus i pel test Anova. Si ja sabem que hi ha diferències, ens interessa saber quins són aquests paràmetres estimats, $\mu$ i $\alpha$, i saber quines diferències hi ha entre aquests paràmetres. Per això, necessitem la comanda *emmeans*.
+
+## Tukey method for comparing the pairs of means
+Ens calcula l'estimació de les mitjanes marginals (*emmean*): 1r+2n, 1r+3r, etc. I això, no depén de la parametrització que hem utilitzat. Qualsevol parametrització que utilitzem, canvia els paràmteres en el *summary*, però no l'estimació de les mitjanes marginals. 
+```{r warning=FALSE}
+(emm<-emmeans(mod,~DOSE))
+```
+La dosi 0 té una estimació de l'esperança de 196.35, la dosi 8 - 200.15. Utilitzant la T-Student, tenim calculats els intervals de confiança a la dreta (del 95%).
+
+Ja tenim els parametres. Ara ens interessa saber quines diferències hi ha entre les dosis. Per aixo, farem molts tests:
+
+$$
+H_0: \mu_1 = \mu_2 \quad vs \quad H_1: \mu_1 \neq \mu_2
+$$
+$$
+H_0: \mu_1 = \mu_3 \quad vs \quad H_1: \mu_1 \neq \mu_3
+$$
+...
+$$
+H_0: \mu_1 = \mu_j \quad vs \quad H_1: \mu_1 \neq \mu_j
+$$
+I farem tantes comparacions com grups hi hagi, en el nostre cas, $5 \cdot 4 = 20$, però com que l'ordre no importa, $= 10$. Clar, fer 10 tests simultàniament, si la probabilitat d'equivocar-me en un test és el 5%, la probabilitat d'equivocar-nos en algún - augmenta. Llavors haurem d'e fer'utilitzar algún sistema per tenir això en compte: Tukey! És un dels més equilibrats.
+
+The variable $emm$ contains the five marginal means (emmeans: estimated marginal means), jointly with their corresponding standard error and confidence intervals computed from the student t-distribution.
+
+The command *pairs* allows to perform two by two comparisons with several methods. By default the choosen method is the Tukey method.
+
+Tests *parella per parella*:
+```{r warning=FALSE}
+pairs(emm)
+```
+Organitza els 10 tests. El primer i el segon: no ens atrevim a dir que són diferents (ens equivocariem el 96% de vegades). El primer i el tecer són diferents, el primer i el quart també són diferents, etc. S'ha d'anar un per un per veure si sí o si no.
+
++ The dose zero is not statistically different from the dose 8.
++ The dose 20 and 15 are not statistically different.
++ The dose 30 and 15 are not statistically different. 
++ The dose 30 and 20 are not statistically different.
+
+En base d'això, podem fer CLD (*Compact letter display*), que és ensenyar el test de forma compacta, i aquí hem de dir quina $\alpha$ definim (nivell de confiança), si no diem res, sera $\alpha = 0.05$. Ho posarà d'una forma més fàcil per a la lectura.
+```{r warning=FALSE}
+CLD(emm,alpha=0.01)
+```
+
+Thus, we can conclude that in terms of ADG we distinguish two dose groups: group1: contains dose 0 and 8 and group2: contains doses 15, 20 and 30. The effect of the doses in the ADG are not distinguishable between doses of the same group, but they are different for the two groups.
+```{r warning=FALSE}
+plot(emm,level=0.99,adjust="tukey")
+```
+```{r warning=FALSE}
+confint(emm,level=0.99,adjust="tukey")
+```
+The plot and confint commands also compute the confidence intervals for each mean but they are computed based on the student rang distribution.
+
+
+Ara, igual que en la regressio, ens quedaria fer els diagnòstics. Amb analisi de variàncies és més senzills encara:
+```{r warning=FALSE}
+plot(predict(mod),resid(mod))
+abline(h=0,lty=2)
+```
+
+Surten 4 columnes, perquè tenim 5 grups. Sí, hi ha diferència entre les grups, però no hi ha cap tendència a que vagin augmentant o coses semblants. En aquest sentit, no hi ha problema.
+
+```{r warning=FALSE}
+plot(rstudent(mod))
+abline(h=c(-2,0,2),lty=2)
+```
+
+Looking at the residuals vs predicted plot we do not observe any pattern. The variances of the residuals are quite similar in the five groups. The standarized residuals do not show patterns neither.
+
+We can test for the homogenity of the variances; two tests for checking the homocedasticity hypothesis:
+```{r warning=FALSE}
+leveneTest(mod)
+```
+```{r warning=FALSE}
+bartlett.test(ADG~DOSE,dd)
+```
+In both cases it is not rejected.

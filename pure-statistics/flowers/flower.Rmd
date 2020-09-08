@@ -1,0 +1,63 @@
+---
+title: "flowers"
+output: html_document
+---
+
+```{r}
+dd<-read.csv2("flowers.csv")
+library(car)
+library(emmeans)
+library(tables)
+#library("RcmdrMisc")
+head(dd)
+print(dd)
+```
+```{r}
+summary(m1<-glm(FLOWERS~SUBSTRAT, family=poisson, data=dd))
+logLik(m1)
+sum(residuals(m1, type="pearson")^2)/m1$df.res
+residualPlot(m1)
+```
+
+```{r}
+Anova(m1, test="LR")
+Anova(m2, test="LR")
+```
+Surt significatiu, hi ha efectes.
+
+```{r}
+(emm<-emmeans(m1, ~SUBSTRAT)) #a nivell de link
+
+summary(emm, type="response") #a nivell de resposta
+CLD(emm, ty="response", Letters=letters, reversed = T)
+```
+
+S'ha d'utilitzar el T-C.
+
+
+```{r}
+summary(m2<-glm(FLOWERS~SUBSTRAT, family=poisson(link="identity"), data=dd))
+logLik(m2)
+sum(residuals(m2, type="pearson")^2)/m2$df.res
+residualPlot(m2)
+```
+
+Exactament el mateix. lunic que pot canviar es la posicio del predictor lineal.
+
+```{r}
+(emm2<-emmeans(m2, ~SUBSTRAT)) #a nivell de link
+
+summary(emm2, type="response") #a nivell de resposta
+CLD(emm2, ty="response", Letters=letters, reversed = T)
+```
+
+```{r}
+anova(m1, test="Chisq")
+```
+
+
+
+
+
+
+

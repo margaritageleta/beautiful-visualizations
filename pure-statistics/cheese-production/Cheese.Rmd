@@ -1,0 +1,273 @@
+---
+title: 'Linear Model: Cheese Production'
+output:
+  pdf_document: default
+  html_document: default
+---
+For the cheese producers, the profitability is the relation between the weight of the cheese and the amount of milk used to produce it. One is interested in analyzing if the type of milk used changes the profit.
+
+**Three milk types** are considered: **cow, sheep and goat**. For each milk type, one is interested in comparing the profit as a function of the **thermic milk treatment** (plane or pasteurized) and the presence of a given **additive** denoted by CaCl2. What is the best combination of THERMIC and $CaCl_2$?
+
+When we have got 2 factors, we can consider:
+
++ The main effect of the factor $F_1$.
++ The main effect of the factor $F_2$.
++ The interaction between $F_1$ and $F_2$.
+
+$$
+Y_{ijk}=\mu + \alpha_i + \beta_j + \gamma_{ij} + e_{ijk}
+$$
+
+Where $i$ is the factor $F_1$, $j$ is the factor $F_2$ and $k$ is the number of repetitions. If there are no repetitions, $\gamma_{ij}$ and  $e_{ijk}$ are merged (and if there are repetitions, we can divide them, so that is what we could not do in the previous example, because there were no repetitions). 
+
+Si posar clorur en llet crua o pasteurizada té efectes diferents, vol dir que hi h interacció. I si té el mateix efecte, vol dir que la interacció no és significativa. Si hi ha interacció, no podrem dir quin tractament tèrmic és millor, sinó que haurem dir quina combinació és millor (tractament i additiu $CaCl_2$)!
+
+(a) Assuming that the ANOVA conditions are satisfied, for each type of milk answer the following questions: 
+
++ Which treatment is the best?
++ The addition of CaCl2 does it increase the profit?
++ Does the thermic treatment increase the profit?
+
+```{r warning=FALSE, message=FALSE}
+library(car)
+library(emmeans)
+library(tables)
+library("RcmdrMisc")
+
+dd<-read.csv2("cheese.csv")
+head(dd)
+```
+
+##COW MILK
+
+### Descriptiva
+
+```{r}
+tabular(COW*(THERMIC=1)~((CaCl2)*mean), dd)
+tabular(COW*(THERMIC=1)~((CaCl2)*sd), dd)
+tabular(COW*(THERMIC=1)~((CaCl2)*(n=1)), dd)
+tabular(COW*(THERMIC+1)~((CaCl2+1)*mean), dd)
+```
+```{r}
+# plot to compare the means
+with(dd, plotMeans(COW, THERMIC, CaCl2, error.bars="conf.int", level=0.95, connect=TRUE)) 
+```
+
+Segons les mitjanes (+ intervals de confiança), veiem que posar CaCl2 a la llet pasteuritzada gairebé no afecta, però a la crua afecta molt (posar CaCl2 disminueix molt el rendiment). És un cas clar de què hi ha interacció. Si no hi hagués interacció, aquestes rectes sortirien paral.leles. Podria ser poligonal si hi haguèssin més nivells.
+```{r}
+# plot to compare the means
+with(dd, plotMeans(COW, CaCl2, THERMIC, error.bars="conf.int", level=0.95, connect=TRUE)) 
+```
+
+### Modelization
+
+$$
+profit \sim THERMIC + CaCl_2 + THERMIC * CaCl_2 \rightarrow  profit \sim THERMIC *CaCl_2
+$$
+```{r}
+# summary(mc<-lm(COW~THERMIC+CaCl2+THERMIC*CaCl2, dd))
+summary(mcow<-lm(COW~THERMIC*CaCl2, dd))
+```
+
+Fixem-nos en el **test Omnibus**: la hipòtesi nul.la $H_0$ és "no hi ha cap efecte" ($\alpha_i = \beta_j = \gamma_{ij} = 0$), la hipòtesi alternativa $H_1$: "hi ha algún efecte". Com que el p-valor és $0.0003799 << 0.05$, el test és significatiu i significa que hi ha algún efecte.
+
+Si el test sortís no significatiu, hem de plegar. Vol dir que amb aquestes dades, aquest model no serveix. O hem de completar el model, perquè hi ha algún efecte que no hem tingut en compte, o hem d'obtenir més dades, etc.
+
+Com que en aquest cas el test ens mostra que hi ha efecte... Ens podem preguntar: **l'efecte de qui és?**
+
++ Hi ha efecte principal tèrmic?
++ Hi ha efecte principal del CaCl2?
++ Hi ha efecte interacció?
+
+Per això fem el **test ANOVA**. 
+
+Abans, mirem-ne el *emmip*, la gràfica de la interacció, que fa un resum del que hem estimat amb el model. La diferència amb la gràfica anterior és que aquests intervals de confiança estan calculats amb la variància conjunta i en l'altre, estaven calculats amb les dades de cada grup. 
+```{r}
+(emmip(mcow,THERMIC~CaCl2, CIs = TRUE))
+```
+```{r}
+(emmip(mcow,CaCl2~THERMIC, CIs = TRUE))
+```
+
+Anova II (= anova I, en aquest cas):
+```{r}
+Anova(mcow)
+```
+
+Observem que:
+
+(a) El tractament tèrmic, com a efecte principal, no afecta, però en la interacció sí.
+(b) El CaCl2 afecta tant en l'efecte principal, com en la interacció.
+
+Quines comparacions ens interessaran? Les 4 possibles combinacions. Fem el *emmeans* de l'efecte combinació (~THERMIC*CaCl2) i fa els 4 tractaments i posa les lletres: 
+```{r}
+(emm<-emmeans(mcow,~THERMIC*CaCl2))
+CLD(emm,Letters=letters, reversed=T)
+```
+
+Segons el resultat:
+
+(a) El millor tractament seria (el que té A): llet de vaca crua + sense CaCl2 o llet de vaca pasteuritzada + sense CaCl2.
+(b) És millor no posar CaCl2. El rendiment més baix el té C.
+
+En la llet crua, hi ha alguna diferència entre llet amb CaCl2 o no? Potser és millor mirar condicionant si posem clorur o no, per cada a tractamnet termic per separat. És una forma més resumida:
+```{r}
+(emm<-emmeans(mcow,~THERMIC|CaCl2))
+CLD(emm,Letters=letters, reversed=T)
+```
+
+Observem, segons els resultats:
+
+(a) Quan **no** posem CaCl2, és millor la llet crua que pasteuritzada.
+(b) Quan **sí** que hi posem, és indistingible si crua o pasteuritzada (no detectem diferencies en el rendiment).
+
+El mateix es pot fer CaCl2:
+```{r}
+(emm<-emmeans(mcow,~CaCl2|THERMIC))
+CLD(emm,Letters=letters, reversed=T)
+```
+
+Observem, segons els resultats:
+
+(a) Quan la llet és **pasteuritzada**, és indistingible posar o no posar CaCl2.
+(b) Quan la llet és **crua**, és millor no posar CaCl2.
+
+El que no podem fer, si hi ha interacció, és fer la separació de mitjanes només per CaCl2, o només per THERMIC, perquè aleshores no tenim en compte la interacció i podem tenir resultats erronis com en aquest cas (fixeu-vos, la nota ens avisa!):
+```{r}
+(emm<-emmeans(mcow,~CaCl2))
+CLD(emm,Letters=letters, reversed=T)
+```
+
+###Diagnostics
+
+Amb 2 factors tenim:
+
++ **Model factorial**: $Y_{ijr}=\mu+\alpha_i+\beta_j+\gamma_{ij}+e_{ijr}$
++ **Model additiu**: els efectes principals dels dos factors se sumen i no hi ha interacció, $Y_{ijr}=\mu+\alpha_i+\beta_j+e_{ijr}$. És un model més senzill.
++ Després tenim dos models una mica redundants, quan sabem que un dels factors no té efecte principal ni en la interacció, podem tenir: $Y_{ijr}=\mu+\alpha_i+e_{ijr}$ o $Y_{ijr}=\mu+\beta_j+e_{ijr}$.
++ I finalment, el **model null**: $Y_{ijr}=\mu+e_{ijr}$.
+
+**Com podem saber que el model additiu no és l'adequat?** 
+
++ Podem ajustar el model factorial i si la interacció és significativa, vol dir que entre els models factorial i additiu hi ha diferències significatives, és a dir, si la interacció és significativa, vol dir que el model factorial ajusta millor. Per tant, una manera, per veure que el model additiu no és l'adequat consisteix en ajustar un altre model - el factorial, i mirar la interacció. 
++ L'altra manera seria mirant els residuals. Els residuals han d'anar la voltant de zero. Si hi ha interacció, ens sortiran grups de residuals que no van al voltant de zero. Pot ser díficil veure-ho per l'efecte de l'atzar, però si veiem clarament grups de residuals que se separen del zero, vol dir que ens falta algún efecte (= la interacció).
+```{r}
+residualPlot(mcow)
+```
+
+Què passaria si fèssim el model sense interacció (= model additiu)? Aleshores, tota la interacció (suma de quadrats, etc) aniria a l'atzar (errors, residus) i tindriem molta més variabilitat i podria ser que els valors predits no anessin al voltant de zero (perquè falta la informació de la interacció).
+
+L'única manera de veure, que sense interacció no funciona, és fent els diagnòstics:
+
+```{r}
+no_mcow<-lm(COW~THERMIC+CaCl2, dd)
+residualPlot(no_mcow)
+```
+
+##GOAT MILK
+
+Provem el model factorial per la llet de cabra:
+```{r}
+summary(mgoat1<-lm(GOAT~THERMIC*CaCl2, dd))
+```
+```{r}
+residualPlot(mgoat1)
+```
+
+Seguidament, pel **test Omnibus** veiem que hem de parar. No ens atrevim a rebutjar la hipòtesi nul.la (no detectem que afecti res). Aquest model amb aqeuestes dades no va bé per modelar el rendiment de la llet de cabra. Podem provar models additius (THERMIC+CaCl2, sense interacció):
+
+```{r}
+summary(mgoat2<-lm(GOAT~THERMIC+CaCl2, dd))
+```
+```{r}
+residualPlot(mgoat2)
+```
+
+Arribem a una conclusió extranya:
+
+(a) El **test Omnibus** ens ha sortit significatiu, el test diu que hi ha alguna diferència ($\alpha_i \neq 0$ o $\beta_i \neq 0$) però...
+(b) Cap dels factors ens ha sortit significatiu (anova). És lògic que el test Omnibus sigui significatiu, però quan fem l'anova efecte per efecte, no detectem cap efecte? És una situació que es pot donar, el resultat és el següent: **hi ha diferències, però no sabem a on**. Això es deu a les formes de les regions d'acceptació. Cada test té la seva regió d'acceptació i és una situació quan estem en la regió d'accepatció del test Omnibus, i ens dóna significatiu, però està fora de les regions d'accepatció dels dos factors. És una qüestió geomètrica que és molt díficil que es doni. Pot ser que hi hagi alguna combinació de factors que doni algún efecte.
+
+```{r}
+Anova(mgoat2)
+```
+
+##SHEEP MILK
+
+El model factorial per l'ovella:
+```{r}
+summary(msh<-lm(SHEEP~THERMIC*CaCl2, dd))
+```
+
+El p-valor que surt al summary és sobre el paràmetres (la parametrització), no interessa gens quan fem models amb factors (però en la regressió sí!!). Per veure si els factors són significatius o no, ho hem de mirar a l'anova. El **test Omnibus** és significatiu.
+
+```{r}
+residualPlot(msh)
+```
+```{r}
+anova(msh)
+```
+
+Observem que: 
+
+(a) La interacció no és significativa.
+(b) Els dos factors són significatius.
+(c) Que no hi hagi interacció, vol dir que el model additiu pot ser vàlid. Però aquest fet no invalida el model factorial.
+(d) Com més paràmetres, menys graus de llibertat tenen els residuals (sempre!!).
+(e) Residual standard error $\hat{\sigma} = 5.74$.
+(f) Mitjana dels quadrats de l'error (anova): $\hat{\sigma}^2=32.94$. Que és la **variància** (= mitjana de l'error).
+
+I el model additiu per l'ovella:
+```{r}
+summary(msh2<-lm(SHEEP~THERMIC+CaCl2, dd))
+```
+```{r}
+residualPlot(msh2)
+```
+```{r}
+anova(msh2)
+```
+
+Els resultats que obtenim:
+
+(a) Residual standard error $\hat{\sigma} = 5.874$. És una mica pitjor que en el model factorial.
+(b) El test Omnibus diu que és significatiu (= que hi ha diferències), i a l'anova veiem la mitjana de quadrats: $\frac{448.53}{13}=34.50=\hat{\sigma}^2$.
+
+Resulta que els dos models són vàlids. **Quin és el millor?** Podem seguir el següent criteri:
+
+(a) Que la variància de l'error sigui petita: és el Residual standard error del summary al quadrat.
+(b) Que les comparacions múltiples en detectin més diferències entre l'un i l'altre.
+
+Segons el criteri (a), el model factorial és una mica millor que l'additiu. 
+
+Anem a fer les comparacions múltiples:
+```{r}
+# Model factorial
+(emmsh<-emmeans(msh,~THERMIC*CaCl2))
+CLD(emmsh,Letters=letters, reversed=T)
+# Posem la A al rendiment més alt,
+# Per tant REVERSED=T
+```
+
+Ens ha sortit que entre els tres primers tractaments, no els distingim. Els tres són candidats a ser el més bo. Ens ha sortit millor pasteuritzat sense clorur càlcic, però això pot ser degur a l'atzar. Les tres tenen el rendiment més alt (*emmean*).
+
+Anem a fer les comparacions múltiples del model additiu. Resulta que l'additiu distingeix millor (b). La millor opció és A: pasteuritzada i sense CaCl2.
+```{r}
+# Model additiu
+(emmsh2<-emmeans(msh2,~THERMIC+CaCl2))
+CLD(emmsh2,Letters=letters, reversed=T)
+```
+
+Finalment, la decisió final... **Quin model és millor, l'additiu o el factorial?** Segons el principi de parsimònia, com més simple el model, si és adequat, millor. L'additiu és adequat i en aquest l'agafariem perquè el que perdem amb les variàncies, realment no és gaire gran, i a més distingeix millor en les comparacions. Si perdèssim molt amb les variàncies, les comparacions ja no sortirien tan bé.
+
+
+
+
+
+
+
+
+
+
+
+

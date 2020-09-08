@@ -1,0 +1,132 @@
+---
+title: "Compost"
+output: html_document
+---
+```{r}
+library(car)
+library(tables)
+library(emmeans)
+dd <- read.csv2("area.csv")
+head(dd)
+```
+```{r}
+summary(mlnormal<-lm(AREA~SPECIES+COMPOST, data = dd))
+(emmip(mlnormal, SPECIES~COMPOST, CIs=T))
+(emmip(mlnormal, COMPOST~SPECIES, CIs=T))
+```
+```{r}
+tract<-factor(paste(dd$SPECIES, dd$COMPOST))
+tract
+dd$SPECIES
+dd$COMPOST
+```
+```{r}
+leveneTest(resid(mlnormal)~tract)
+```
+```{r}
+plot(predict(mlnormal), resid(mlnormal))
+abline(h=0, lty=2)
+```
+Els residuals van voltant de zero. Si no van al voltant de zero vol dir que le model no ajusta bé lçesperanca i veiem que les variancies van creixent. Per tant, no es compleix la homocedisitat.
+```{r}
+plot(rstudent(mlnormal))
+abline(h=c(-2,0,2), lty=2)
+print(rstudent(mlnormal))
+```
+```{r}
+Anova(mlnormal)
+```
+
+```{r}
+summary(mllognormal<-lm(log(AREA)~SPECIES+COMPOST, data = dd))
+(emmip(mllognormal, SPECIES~COMPOST, CIs=T))
+(emmip(mllognormal, COMPOST~SPECIES, CIs=T))
+plot(predict(mllognormal), resid(mllognormal))
+abline(h=0, lty=2)
+```
+El model no ajusta be la mitjana, hi ha un patró que no ens va bé-
+
+```{r}
+summary(mnormal<-glm(AREA~SPECIES+COMPOST,family=gaussian(link="identity"),data=dd))
+(emmip(mnormal, SPECIES~COMPOST, CIs=T))
+(emmip(mnormal, COMPOST~SPECIES, CIs=T))
+plot(predict(mnormal), resid(mnormal))
+abline(h=0, lty=2)
+```
+
+```{r}
+summary(mgamma<-glm(AREA~SPECIES+COMPOST,family=Gamma(link="identity"),data=dd))
+(emmip(mgamma, SPECIES~COMPOST, CIs=T))
+(emmip(mgamma, COMPOST~SPECIES, CIs=T))
+plot(predict(mgamma), resid(mgamma))
+abline(h=0, lty=2)
+```
+No fa el test omnibus. Calcula les deviancies. Per fer omnibus fem:
+```{r}
+summary(mgamma_null<-glm(AREA~1,family=Gamma(link="identity"),data=dd))
+anova(mgamma_null, mgamma, test="F")
+```
+
+Es significatiu. Amb aquestes dades i aquest model podem fer coses.
+
+```{r}
+residualPlot(mgamma, smooth=F)
+scatterplot(predict(mgamma), sqrt(abs(resid(mgamma))), smooth=F, boxplot=F)
+```
+```{r}
+Anova(mgamma, test="F")
+```
+```{r}
+(emm<-emmeans(mgamma, ~SPECIES))
+CLD(emm)
+
+(emm2<-emmeans(mgamma, ~COMPOST))
+CLD(emm2)
+
+(emm3<-emmeans(mgamma, ~SPECIES+COMPOST))
+CLD(emm3)
+```
+
+```{r}
+# si donem la distribuiio, no hem de definir la variancia, perque ja ho sap. La distribucio i la variancia van intimamemtn lligades.
+summary(mquasi<-glm(AREA~SPECIES+COMPOST,family=quasi(link="identity", variance="mu^2"),data=dd))
+(emmip(mquasi, SPECIES~COMPOST, CIs=T))
+(emmip(mquasi, COMPOST~SPECIES, CIs=T))
+```
+
+```{r}
+Anova(mnormal, test="F")
+Anova(mllognormal)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,281 @@
+---
+title: "Contrastes de hip?tesis"
+author: "Pedro Delicado"
+date: "8 de mayo de 2018"
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivos de la practica
+
+- Mostrar el uso b?sico de R para contrastes de hip?tesis sobre medias y proporciones.  
+- Construir la funci?n de potencia de un contraste.
+- Ilustrar con un ejemplo la relaci?n existente entre contrastes de hip?tesis e intervalos de confianza.
+- Ense?ar algunas de las t?cnicas usadas para contrastar normalidad.
+
+## Sobre contrastes de hip?tesis:
+
+- **Relaci?n entre contrastes de hip?tesis e intervalos de confianza.** 
+Supongamos que estamos interesados en estudiar un
+par?metro $\theta$ de la distribuci?n de una variable aleatoria $X$ ($\theta$ puede ser, por ejemplo, la esperanza de $X$, la varianza de $X$, la probabilidad de que $X$ sea positiva, etc.). A partir de una muestra aleatoria simple de $X$ podemos construir intervalos de confianza $(1-\alpha)$ para $\theta$ (a los que denotaremos por $\mbox{IC}_{1-\alpha}(\theta)$) y tambi?n podemos hacer contrastes de hip?tesis de la forma
+\[
+\left\{\begin{array}{l}H_0: \theta=\theta_0 \\ H_1: \theta \ne\theta_0\end{array}\right.
+\]
+con nivel de signnificaci?n $\alpha$.
+
+- Las siguientes realciones entre intervalos de confianza y contrastes de hip?tesis son, en general, aproximadamente v?lidas:
+    - *Si un valor $\theta_0$ pertenece al $IC_{1-\alpha}(\theta)$ entonces la hip?tesis nula $H_0: \theta=\theta_0$ no ser? rechazada a nivel $\alpha$.*
+    - *El conjunto de los valores $\theta_0$ para los que no se rechaza $H_0: \theta=\theta_0$ a nivel $\alpha$, forman un intervalo de confianza para $\theta$ con nivel de confianza $(1-\alpha)$.*
+
+- La mayor parte de las t?cnicas de inferencia desarrolladas para variables aleatorias normales son tambi?n aproximadamente v?lidas aunque no haya normalidad, siempre y cuando el tama?o muestral $n$ sea *grande*. 
+    - *?C?mo de grande ha de ser $n$?* Eso depende de la distribuci?n de $X$: cuanto menos se parezca esta distribuci?n a la distribuci?n normal, mayor tendr? que ser $n$ para que los resultados basados en normalidad sean v?lidos.
+  
+    - Por lo tanto, es ?til poder contrastar si la muestra aleatoria simple con la que estamos trabajando proviene de una distribuci?n normal. 
+
+## PR?CTICA
+
+### PARTE A: Test de normalidad. Contrastes para medias y proporciones. Relaci?n entre contrastes e intervalos de confianza.
+
+Vamos a trabajar con el fichero de datos `paises.xlsx` (extra?do de Pe?a y Romo, 1997; los datos provienen del Banco Mundial). Es un fichero con datos del a?o 1992 que corresponden a 132 pa?ses del mundo. Entre las variables que se han medido en cada pa?s est?n las siguientes:
+
+- `ESPERANZ`: Esperanza de vida al nacer estimada en 1992.
+- `MORT.INF`: Tasa de mortalidad infantil (por 1.000 nacidos vivos) en 1992.
+- `ESP.M`: Esperanza de vida al nacer de las mujeres estimada en 1992.
+- `ESP.H`: Esperanza de vida al nacer de los hombres estimada en 1992.
+
+```{r}
+library(readxl)
+paises <- read_excel("paises.xlsx")
+str(paises)
+names(paises) <- gsub(" ","",names(paises))    #quita espacios en blanco
+```
+```{r}
+plot(paises[,-c(1,2)])
+plot(paises[,-c(1,2,3,4,6,7)])
+```
+
+1. Calcula la diferencia entre `ESP.M` y `ESP.H` y gu?rdala como `EM.EH`.
+```{r}
+EM.EH <- paises$ESP.M - paises$ESP.H
+```
+
+2. **Contrastes de normalidad** 
+
+2.1. *Histograma y funci?n de densidad normal.*
+Una manera informal de examinar la normalidad de unos datos es comparar su histograma con la funci?n de densidad de la normal que tiene por esperanza la media muestral de los datos y por varianza la varianza muestral. 
+*(Nota: Existen otros contrastes formales de normalidad basados en t?cnicas no param?tricas.)*
+    
+* Estudia de esta manera las variables `ESP.M`, `ESP.H` y `EM.EH`. ?Cu?les de estas variables crees que podr?an considerarse normales?
+    
+```{r}
+#comparacion con una normal.
+hist(paises$ESP.M,breaks = 10, freq=FALSE)
+x<-seq(min(paises$ESP.M),max(paises$ESP.M),length=101)
+lines(x,dnorm(x,m=mean(paises$ESP.M),sd=sd(paises$ESP.M)),col=2)
+
+hist(paises$ESP.H,breaks = 10, freq=FALSE)
+x<-seq(min(paises$ESP.H),max(paises$ESP.H),length=101)
+lines(x,dnorm(x,m=mean(paises$ESP.H),sd=sd(paises$ESP.H)),col=2)
+
+hist(EM.EH,breaks = 10, freq=FALSE)
+x<-seq(min(EM.EH),max(EM.EH),length=101)
+lines(x,dnorm(x,m=mean(EM.EH),sd=sd(EM.EH)),col=2)
+``` 
+
+2.2. *Funci?n de distribuci?n emp?rica.*
+Comparar la funci?n de distribuci?n emp?rica de los datos con la funci?n de distribuci?n de una normal cuya media y varianza fuesen las estimadas a partir de los datos.
+
+* Estudia de esta manera las variables `ESP.M`, `ESP.H` y `EM.EH`. ?Cu?les de estas variables crees que podr?an considerarse normales?
+
+```{r}
+emp.teo.df <- function(x){
+  mu.hat <- mean(x)
+  s.hat <- sd(x)
+  tt <- seq(min(x), max(x),length=101)
+  plot(ecdf(x))
+  lines(tt,pnorm(tt,mu.hat,s.hat),col = 2)
+}
+
+emp.teo.df(paises$ESP.H)
+emp.teo.df(paises$ESP.M)
+emp.teo.df(EM.EH)
+```
+
+
+2.3. *Normal probability plot.* 
+La functi?n `qqnorm`, juntamente con la funci?n `qqline`, ofrecen un contraste gr?fico de normalidad, conocido como *Normal probability plot*. Se dibuja una nube de puntos que, bajo normalidad, estar?a situada sobre una l?nea recta. 
+
+* Estudia de esta manera las variables `ESP.M`, `ESP.H` y `EM.EH`. ?Cu?les de estas variables crees que podr?an considerarse normales?
+
+```{r}
+#cuantiles que esperariamos encontrar de una normal(0,1)
+#si cae en una linia recta seria una normal.
+qqnorm(paises$ESP.H); qqline(paises$ESP.H, col = 2)
+qqnorm(paises$ESP.M); qqline(paises$ESP.M, col = 2)
+qqnorm(EM.EH); qqline(EM.EH, col = 2)
+
+#ordenamos esparanza hombres, plot de otra forma.
+s.h <- sort(paises$ESP.H)
+n <- length(s.h)
+((1:n)-1/2)/n
+qn <- qnorm(((1:n)-1/2)/n)
+plot(qn, s.h)
+xn <- rnorm(n, m = mean(s.h), sd = sd(s.h))
+plot(qn,sort(xn))
+qqline(xn)
+```
+
+2.4. *Shapiro-Wilk normality test.*
+
+```{r}
+shapiro.test(paises$ESP.H)
+shapiro.test(paises$ESP.M)
+shapiro.test(EM.EH)
+
+#correlaciones
+cor(qn, s.h)
+cor(qn,sort(EM.EH))
+```
+
+3. Calcula el intervalo de confianza al 95\% para la media poblacional de `EM.EH`: $IC_{95\%}(\mu)$.
+```{r}
+aux <- t.test(EM.EH)
+print(aux)
+IC.med.EM.EH <- aux$conf.int
+```
+
+**Relaci?n entre intervalos de confianza y contrastes de hip?tesis.**
+Realiza cinco contrastes de hip?tesis con nivel de significaci?n $\alpha=0.05$ de la forma 
+\[
+\left\{\begin{array}{l}H_0: \mu=\mu_0 \\ H_1: \mu \ne \mu_0 \end{array}\right.
+\]
+donde $\mu=E(\text{EM.EH})$ y como valores $\mu_0$ eligie 4, 4.5, 5, 5.5, 6.
+
+* Haz estos contrastes para la media con la funci?n `t.test`. 
+* Anota los valores del estad?stico $T$ y del p-valor de cada contraste. 
+
+```{r}
+mu.v<-c(4, 4.5, 5, 5.5, 6)
+p.valor <- T.est <- numeric(length(mu.v))
+for (i in (1:length(mu.v))){
+    t.test.i <- t.test(EM.EH, mu=mu.v[i])
+    print(t.test.i)
+    T.est[i] <- t.test.i$statistic
+    p.valor[i] <- t.test.i$p.value
+}
+```
+    - Comprueba que s?lo rechazas $H_0$ si $\mu_0 \not \in \text{IC}_{95\%}(\mu)$.
+```{r}
+alpha <- .05
+mu.v<-seq(4,6,by=.1)
+p.valor <- T.est <- numeric(length(mu.v))
+for (i in (1:length(mu.v))){
+    t.test.i <- t.test(EM.EH, mu=mu.v[i], conf.level = 1-alpha)
+    T.est[i] <- t.test.i$statistic
+    p.valor[i] <- t.test.i$p.value
+}
+plot(mu.v,p.valor,ylim=c(0,1),type="l")
+abline(h=alpha,col=8)
+abline(v=IC.med.EM.EH,col=2,lty=2)
+```
+
+3. **Contrastes de igualdad de medias.**
+Queremos contrastar ahora si la esperanza de vida para los hombres es, en media, igual a la de las mujeres, o si por el contrario es mayor para estas ?ltimas.
+
+?Por qu? se trata de un problema de comparaci?n de dos muestras con datos apareados?
+
+Dado que disponemos de datos apareados, la prueba se basa en contrastar si la media de `EM.EH` es $0$ frente a que es mayor que $0$. 
+
+* Escribe las hip?tesis nula y alternativa. 
+* Realiza este contraste y anota el valor del estad?stico $T$, los grados de libertad y el p-valor del contraste. 
+* ?Cu?l es el resultados del test? (Es decir, indica si se rechaza $H_0$).
+
+```{r}
+t.test(EM.EH,mu=0,alternative="greater")
+```
+```{r}
+t.test(EM.EH,mu=0,alternative="less")
+```
+
+4. Ahora ya sabemos que en media los hombres viven menos que las mujeres. Dividimos los pa?ses en *desarrollados* y *no desarrollados`* tomando como indicador de desarrollo la mortalidad infantil `MORT.INF`:
+
+* Si `MORT.INF` es menor que 70 por mil, *desarrollado* valdr? 1.
+* Si `MORT.INF` es mayor o igual que 70 por mil, *desarrollado* valdr? 0.
+
+```{r}
+Ind.Des.MI <- as.numeric(paises$MORT.INF<70)
+```
+
+5. Nos planteamos la pregunta de si la media poblacional de la variable `EM.EH` es distinta en los dos grupos de pa?ses que acabamos de definir. ?ste es un contraste de igualdad de medias en poblaciones independientes, que en R se lleva a cabo haciendo lo siguiente:
+`t.test(EM.EH[Ind.Des.MI==1],EM.EH[Ind.Des.MI==0])`
+
+    - Escribe las hip?tesis nula y la alternativa.
+    - Anota el valor del estad?stico $T$, los grados de libertad y el p-valor del contraste. 
+    - ?Cu?l es el resultado del test?
+
+```{r}
+plot(paises$MORT.INF,EM.EH)
+abline(v=70,col=2)
+t.test(EM.EH[Ind.Des.MI==1],EM.EH[Ind.Des.MI==0])
+```
+
+6. Estima con una confianza del 95\% en cu?nto m?s sobreviven, en promedio, las mujeres a los hombres en pa?ses desarrollados que en pa?ses no desarrollados. 
+
+```{r}
+t.test(EM.EH[Ind.Des.MI==1],EM.EH[Ind.Des.MI==0])$conf.int
+```
+
+## PARTE B: C?lculo de la funci?n de potencia de un contraste.
+
+Supongamos que la variable aleatoria $X$ sigue una distribuci?n $B(n=100,p)$. Para contrastar 
+\[
+\left\{
+\begin{array}{l}H_0:p=0.5\\H_1: p\ne 0.5 \end{array}
+\right.
+\]
+consideramos el procedimiento que rechaza $H_0$ cuando $|X-50|>10$. Utilizaremos la aproximaci?n normal a la binomial con correcci?n por continuidad para realizar los siguientes c?lculos.
+
+1. Calcular la probabilidad del error de tipo I:
+\[
+P(|X-50|>10) \approx 1-P(39.5 \le Y_{p_0} \le 60.5)
+\]
+donde $Y_{p_0}$ es una normal con media y varianza igual a la de $X$ bajo $H_0$.
+
+```{r}
+p0<-.5
+n <- 100
+( Pr.Err.Type.I <- 1- 
+    (pnorm(60.5,m=n*p0,s=sqrt(n*p0*(1-p0))) -
+    pnorm(39.5,m=n*p0,s=sqrt(n*p0*(1-p0)))) )
+
+1- (pbinom(60,size=100,p=.5) - pbinom(39,size=100,p=.5))
+```
+
+- La funci?n de potencia para un valor $p$ dado es aproximadamente
+\[
+1-P(39.5 \le Y_{p} \le 60.5) = 
+1-P\left({39.5 - 100p \over \sqrt{100 p(1-p)}} \le Z \le {60.5 - 100p \over
+    \sqrt{100 p(1-p)}}\right)
+\]
+donde $Y_p$ es una normal con media y varianza igual a la de $X\sim B(n=100,p)$, y $Z\sim N(0,1)$.
+
+Calcular el valor de la funci?n de potencia en los puntos $p$ en `seq(0.2,0.8,by=0.05)`.
+
+```{r}
+n <- 100
+p.v <- seq(0.2,0.8,by=0.05)
+potencia <- numeric(length(p.v))
+for (i in (1:length(p.v))){
+  p <- p.v[i]
+  potencia[i] <- 1- 
+    (pnorm(60.5,m=n*p,s=sqrt(n*p*(1-p)))-
+     pnorm(39.5,m=n*p,s=sqrt(n*p*(1-p))))
+}
+plot(p.v,potencia,type="l",ylim=c(0,1))
+```

@@ -1,0 +1,301 @@
+---
+title: "Intervalos de confianza"
+author: "Pedro Delicado"
+date: "7 de mayo de 2018"
+output: 
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivos de la practica
+
+- Aprender el uso b?sico de R para el c?lculo de intervalos de confianza para medias y
+proporciones poblacionales. 
+- Comprobar emp?ricamente el car?cter frecuentista del concepto de *confianza* de un estimador por intervalos.
+
+## Sobre los intervalos de confianza 
+
+- Sea $X \sim N(\mu, \sigma^2)$, $\sigma^2$ conocida. Sea $X_1,\ldots,X_n$ una m.a.s. de $X$. 
+Observada la muestra $x_1,\ldots,x_n$, $\bar{x}_n=(\sum_{i=1}^nx_i)/n$ es la media muestral calculada
+a partir de ella y $S^2=(\sum_{i=1}^n(x_i-\bar{x})^2)/(n-1)$ la varianza muestral. 
+Un intervalo de confianza $(1-\alpha)$ para $\mu$ es 
+\[
+\mbox{IC}_{1-\alpha}(\mu) \equiv \left( \bar{x}_n \mp z_{\alpha/2} {\sigma
+  \over \sqrt{n} } \right).
+\]
+- Si el tama?o muestral es suficientemente grande, el mismo intervalo de
+confianza se puede usar aunque $\sigma^2$ no sea conocida (se ha de
+sustituir por la varianza muestral) e incluso cuando $X$ no sea normal.
+
+- Si $X$ es normal y el tama?o muestral no es grande ($n\le 30$) la
+expresi?n de un intervalo de confianza $(1-\alpha)$ para $\mu$ es 
+\[
+\mbox{IC}_{1-\alpha}(\mu) \equiv \left( \bar{x}_n \mp t_{n-1,\alpha/2} {S
+  \over \sqrt{n} } \right).
+\]
+
+- Si $X\sim \mbox{Bern(p)}$, entonces la proporci?n poblacional $p$
+coincide con $\mu=E(X)$, la proporci?n muestral $\hat{p}_n$ coincide
+con la media muestral y la estimaci?n de la varianza usada habitualmente
+es $\hat{p}_n(1-\hat{p}_n)$. Si $n$ es grande, entonces
+\[
+\mbox{IC}_{1-\alpha}(p) \equiv \left( \hat{p}_n \mp z_{\alpha/2}
+\sqrt{\hat{p}_n(1-\hat{p}_n) \over n} \right).
+\]
+- Un intervalo de confianza $(1-\alpha)$ para un par?metro $\theta$ es un procedimiento que
+da lugar a intervalos tales que aproximadamente el 100$(1-\alpha)$\%
+de ellos contiene el verdadero valor del par?metro.
+
+## PR?CTICA
+
+### PARTE A: Intervalos para la media y la diferencia de medias.
+
+1. Considera que la estatura de los habitantes de un pa?s puede modelizarse como una variable aleatoria $X \sim N(\mu=175, \sigma^2=10^2)$. Generaremos con R una muestra aleatoria simple de
+  tama?o $n=20$ de $X$ (esto es como si hubi?semos elegido aleatoriamente 20 personas y hubi?semos anotado la estatura de cada una). 
+
+```{r}
+n <- 20
+mu <- 175
+sigma=10
+x <- rnorm(n, m=mu, sd=sigma)
+```
+
+2. Calcula la media muestral ($\bar{x}_n$) y su error est?ndar ($\mbox{EE}( \bar{x}_n )$).
+
+```{r}
+(x.bar <- mean(x))
+(se.x.bar.0 <- sigma/sqrt(n))
+(se.x.bar <- sd(x)/sqrt(n))
+```
+
+3. Calcula el $\mbox{IC}_{95\%}(\mu)$ suponiendo $\sigma^2$ conocido usando la f?rmula
+\[
+\mbox{IC}_{95\%}(\mu)=( \bar{x}_n \mp 1.96 \; \mbox{EE}( \bar{x}_n ) )
+\]
+
+
+```{r}
+conf <- .95
+alpha <- 1-conf
+(IC.mu <- x.bar + c(-1,1)*qnorm(1-alpha/2)*se.x.bar.0)
+```
+
+
+4. Calcula ahora el $\mbox{IC}_{99\%}(\mu)$. ?C?mo explicas que este intervalo *m?s fiable* sea m?s ancho que el anterior?
+
+
+```{r}
+conf <- .99
+alpha <- 1-conf
+(IC.mu <- x.bar + c(-1,1)*qnorm(1-alpha/2)*se.x.bar.0)
+```
+
+5. Calcula el $\mbox{IC}_{95\%}(\mu)$ suponiendo $\sigma^2$ desconocido.
+Hazlo de dos formas:
+    a. Usando la f?rmula 
+\[
+\mbox{IC}_{1-\alpha}(\mu)=( \bar{x}_n \pm t_{n-1,\alpha/2} \; \mbox{EE}( \bar{x}_n ) )
+\]
+    b. Usando la funci?n `t.test`
+
+```{r}
+conf <- .95
+alpha <- 1-conf
+(IC.mu <- x.bar + c(-1,1)*qt(1-alpha/2,n-1)*se.x.bar)
+```
+    
+```{r}
+t.test(x)
+```
+?Por qu? se espera que este intervalo sea m?s ancho que el que calculaste antes? ?Podr?a haber sido m?s estrecho?
+
+5. Utiliza los datos del fichero `sanfermines.corregido.Rdata` para dar un
+  intervalo de confianza 95\% para la duraci?n media medio de un encierro.
+  
+```{r}
+load("sanfermines.corregido.Rdata")
+names(sf2)
+cat("\n")
+n <- dim(sf2)[1]
+Dur.med <- mean(sf2$Duracion)
+se.Dur.med <- sd(sf2$Duracion)/sqrt(n)
+conf <- .95
+alpha <- 1-conf
+(IC.Dur.med <- Dur.med + c(-1,1)*qnorm(1-alpha/2)*se.Dur.med)
+```
+
+6. **Diferencia de medias en muestras independientes.** Usando los mismos datos, da un intervalo de confianza para la
+  diferencia entre la duraci?n media de los encierros en fines de semana y en d?as de diario.
+
+```{r}
+Dur.fs <- sf2$Duracion[sf2$Fin.semana==1]
+Dur.lab <- sf2$Duracion[sf2$Fin.semana==0]
+
+n.fs <- length(Dur.fs)
+Dur.med.fs <- mean(Dur.fs)
+se.Dur.med.fs <- sd(Dur.fs)/sqrt(n.fs)
+
+n.lab <- length(Dur.lab)
+Dur.med.lab <- mean(Dur.lab)
+se.Dur.med.lab <- sd(Dur.lab)/sqrt(n.lab)
+
+Dif.Dur.med <- Dur.med.fs - Dur.med.lab
+se.Dif.Dur.med <- sqrt( se.Dur.med.fs^2 + se.Dur.med.lab^2 )
+
+conf <- .95
+alpha <- 1-conf
+(IC.Dif.Dur.med <- Dif.Dur.med + c(-1,1)*qnorm(1-alpha/2)*se.Dif.Dur.med)
+
+cat("\n")
+
+t.test(Dur.fs,Dur.lab)
+```
+
+7. **Diferencia de medias en datos apareados.** Calcula un intervalo de confianza 95\% para la diferencia de las duraciones medias del primer y el ?ltimo encierro de cada a?o.
+
+```{r}
+primer <- which(sf2$Dia==7)
+ultimo <- which(sf2$Dia==14)
+(c(length(primer),length(ultimo)))
+(primer)
+(ultimo)
+primer <- ultimo - 7
+
+plot(sf2$Duracion[primer],sf2$Duracion[ultimo])
+abline(a=0,b=1)
+plot(sf2$Duracion[primer]-sf2$Duracion[ultimo])
+abline(h=0)
+
+(n<- length(ultimo))
+Dif.Dur.pr.ul <- sf2$Duracion[primer]- sf2$Duracion[ultimo]
+(Dif.med.Dur.pr.ul <- mean(Dif.Dur.pr.ul))
+se.Dif.med.Dur.pr.ul <- sd(Dif.Dur.pr.ul)/sqrt(n)
+conf <- .95
+alpha <- 1-conf
+(IC.Dif.med.Dur.pr.ul <- Dif.med.Dur.pr.ul + c(-1,1)*qnorm(1-alpha/2)*se.Dif.med.Dur.pr.ul)
+```
+
+## PARTE B: Car?cter frecuentista de la confianza de un estimador por intervalos.
+
+Reproduciremos ahora lo que obtendr?amos si tom?semos $S=200$ muestras de $n=50$ personas y midi?semos su altura.
+
+1. Tomamos 200 muestras de la variable *estatura*  $X\sim
+  N(\mu=175, \sigma^2=10^2)$, cada una de ellas de tama?o $n=50$. 
+Esto lo haremos generando datos aleatorios en una matriz de $n=50$ columnas y $S=200$ filas.
+
+```{r}
+mu <- 175
+sigma=10
+n<-50
+S<-200
+X <- matrix(rnorm(n*S,mu,sigma),ncol=n)
+```
+
+2. Calcula la media muestral de las 200 muestras de tama?o 50.
+De esta manera tendr?s 200 realizaciones de $\bar{X}_n$,
+para $n=50$. 
+
+```{r}
+x.bar.S <- apply(X,1,mean)
+```
+
+
+3. Calcula la desviaci?n t?pica muestral de las 200 muestras de tama?o 50.
+De esta manera tendr?s 200 realizaciones de $S$,
+para $n=50$. 
+```{r}
+x.sd.S <- apply(X,1,sd)
+```
+
+4. Calcula para cada una de las 200 muestras los extremos del
+  $\mbox{IC}_{95\%}(\mu)$ suponiendo $\sigma$ conocido.
+
+```{r}
+conf <- .95
+alpha <- 1-conf
+se.x.bar <- sigma/sqrt(n)
+Lo <- x.bar.S - qnorm(1-alpha/2)*se.x.bar
+Up <- x.bar.S + qnorm(1-alpha/2)*se.x.bar
+```
+
+
+5. ?Cu?ntos de estos intervalos no contienen al verdadero valor del
+  par?metro $\mu=175$?
+
+```{r,fig.asp=1}
+plot(c(Lo,Up),c(1:S,1:S),pch=20,cex=.3)
+segments(Lo,1:S,Up,1:S,col=8)
+abline(v=mu,col=4)
+no.cont <- which((Lo>mu)|(Up<mu))
+segments(Lo[no.cont],no.cont,Up[no.cont],no.cont,col=2)
+title(paste0("Ints. de conf. ",conf,": ",length(no.cont)," de ",S," no contienen el par?mtero"))
+```
+6. ?Cu?l es la anchura media de esos intervalos? ?Y la varianza
+  muestral de la anchura?
+  
+```{r}
+ancho <- Up-Lo
+(mean(ancho))
+(var(ancho))
+```
+
+7. Repite los tres ?ltimos apartados para construir  $\mbox{IC}_{95\%}(\mu)$
+  suponiendo $\sigma$ desconocido.
+
+```{r}
+conf <- .95
+alpha <- 1-conf
+se.x.bar <- x.sd.S/sqrt(n)
+Lo <- x.bar.S - qt(1-alpha/2,n-1)*se.x.bar
+Up <- x.bar.S + qt(1-alpha/2,n-1)*se.x.bar
+
+plot(c(Lo,Up),c(1:S,1:S),pch=20,cex=.3)
+segments(Lo,1:S,Up,1:S,col=8)
+abline(v=mu,col=4)
+no.cont <- which((Lo>mu)|(Up<mu))
+segments(Lo[no.cont],no.cont,Up[no.cont],no.cont,col=2)
+title(paste0("Ints. de conf. ",conf,": ",length(no.cont)," de ",S," no contienen el par?mtero"))
+
+ancho <- Up-Lo
+(mean(ancho))
+(var(ancho))
+```
+
+## PARTE C: Proporciones.
+
+Utiliza los datos del fichero `sanfermines.corregido.Rdata`.
+
+1. Da un intervalo de confianza 95\% para la probabilidad de que en un encierro no haya heridos por asta de toro. Usa la aproximaci?n a la normal.
+
+```{r}
+n <- dim(sf2)[1]
+(pr <- sum(sf2$Heridos.asta==0)/n)
+se.pr <- sqrt(pr*(1-pr)/n)
+(IC.prob <- pr + c(-1,1)*qnorm(1-alpha/2)*se.pr)
+```
+
+2. **Comparaci?n de dos proporciones**. Da un intervalo de confianza 95\% para la diferencia entre la probabilidad de que en un encierro en fin de semana no haya heridos por asta de toro y la misma probabilidad referida a d?as de diario.
+
+```{r}
+pr.fs <- sf2$Duracion[sf2$Fin.semana==1]
+pr.lab <- sf2$Duracion[sf2$Fin.semana==0]
+
+n.fs <- sum(sf2$Fin.semana==1)
+(pr.fs <-sum(sf2$Heridos.asta[sf2$Fin.semana==1]==0)/n.fs)
+se.pr.fs <- sqrt(pr.fs*(1-pr.fs)/n.fs)
+
+n.lab <- sum(sf2$Fin.semana==0)
+(pr.lab <- sum(sf2$Heridos.asta[sf2$Fin.semana==0]==0)/n.lab)
+se.pr.lab <- sqrt(pr.lab*(1-pr.lab)/n.lab)
+
+Dif.pr <- pr.fs - pr.lab
+se.Dif.pr <- sqrt( se.pr.fs^2 + se.pr.lab^2 )
+
+conf <- .95
+alpha <- 1-conf
+(IC.Dif.pr <- Dif.pr + c(-1,1)*qnorm(1-alpha/2)*se.Dif.pr)
+```

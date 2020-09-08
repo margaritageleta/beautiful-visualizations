@@ -1,0 +1,86 @@
+---
+title: "Piglets"
+output: html_document
+---
+
+```{r}
+library(car)
+library(tables)
+library(emmeans)
+dd <- read.csv2("ci.csv")
+head(dd)
+```
+
+```{r}
+cv<-function(x) {sd(x)/mean(x)}
+tabular(CI*SWEET~((n=1)+mean+sd+cv), dd)
+
+#with(dd, plotMeans(CI, SWEET, error.bars="conf.int", level=0.95))
+```
+
+```{r}
+summary(m1<-glm(CI~SWEET, family=inverse.gaussian, data=dd))
+```
+```{r}
+(emmip(m1, ~SWEET, CIs=T, type="response"))
+(emmip(m1, ~SWEET, CIs=T))
+```
+```{r}
+summary(m1)$family
+logLik(m1)
+(scale<-sqrt(summary(m1)$disp))
+sum(residuals(m1, type="deviance")^2)
+sum(residuals(m1, type="deviance")^2)/m1$df.residual
+sum(residuals(m1, type="pearson")^2)
+sum(residuals(m1, type="pearson")^2)/m1$df.residual
+```
+```{r}
+plot(predict(m1), resid(m1))
+abline(h=0, lty=2)
+residualPlot(m1)
+```
+```{r}
+Anova(m1, test="F")
+```
+```{r}
+(em1<-emmeans(m1, ~SWEET))
+```
+```{r}
+summary(em1, ty="response")
+```
+```{r}
+# pairs(em1)
+CLD(em1)
+```
+```{r}
+# pairs(em1, ty= "response")
+CLD(em1, ty = "response")
+```
+```{r}
+# pairs(em1, ty= "response")
+CLD(em1, ty = "response")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

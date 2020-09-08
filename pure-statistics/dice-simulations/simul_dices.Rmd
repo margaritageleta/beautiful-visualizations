@@ -1,0 +1,242 @@
+---
+title: "Probability gamblers"
+author: "Margarita Geleta"
+date: "3rd march 2018"
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+In the 16th Century, there was no way to quantify luck. If someone rolled two sixes during a game of dice, people thought it was just good fortune. Gerolamo Cardano, an Italian physician with a lifelong gambling habit, thought otherwise. He decided to tackle betting games mathematically, and wrote a gamblers manual that outlined how to navigate the \???sample space\??? of possible events. For example, while two dice can land in 36 different ways, only one of these produces two sixes.
+
+This was the beginning of what is now called the theory of probability. It means we can quantify how likely an event is, and work out precisely how lucky???or unlucky???we have been. Thanks to his new methods, Cardano earned a crucial advantage in gambling halls, and mathematics gained a whole new field of study.
+
+### Introduction: Monte Carlo Simulation
+Roughly speaking, Monte Carlo Simulation means using a computer to repeatedly carry out a random experiment and keeping track of the outcomes. If we repeat an experiment (like flipping a coin) a large number of times and tabulate the outcomes, the relative frequencies will "converge" to the probabilities of each outcome. 
+The modern version of the Monte Carlo method was invented in the late 1940s by Stanislaw Ulam, while he was working on nuclear weapon projects at the Los Alamos National Laboratory. A colleague of Ulam, Nicholas Metropolis, suggested using the name *Monte Carlo*, which refers to the Monte Carlo Casino in Monaco where Ulam???s uncle would borrow money from relatives to gamble.
+Flipping a coin one million times by hand would be tedious in the extreme. But simulating a million coin flips in R takes less than a second. This is why Monte Carlo Simulation is such a valuable tool.
+
+### Monte Carlo in R
+Any Monte Carlo Simulation can be broken into two parts. First, we need code to carry out the random experiment we???re interested in on the computer. Depending on the problem, the details of this step will vary. We???ll work with a simple but flexible function called *sample* that allows us to simulate discrete experiments like rolling dice, drawing from an urn, or flipping a coin. Second, we need code to repeat something over and over. This step will always be the same, regardless of the details of the first step: we???ll use the function *replicate*.
+
+## sample
+The R command *sample* simulates drawing marbles from a bowl. It turns out that there are many random experiments that can be reduced to thinking about a bowl containing different kinds of marbles, so *sample* is ipso facto a fairly general command. The function *sample* takes three arguments: x is a vector containing the ???marbles??? in our hypothetical bowl, size tells R how many marbles we want to draw, and replace is set to TRUE or FALSE depending on whether we want to draw marbles from the bowl with replacement, which means putting the marble back after each draw, or without replacement, which means keeping each marble after we draw it and not returning it to the bowl. Of these three arguments x is the most mysterious. What do I mean by a ???vector containing marbles???? You can use any vector at all as the argument x: it simply plays the role of the label we give to each of our hypothetical marbles.
+
+Let???s look at an example in which I simulate drawing two marbles from a bowl containing one red, one blue and one green marble, without replacement:
+
+```{r}
+marbles = c('red', 'blue', 'green')
+sample(x = marbles, size = 2, replace = FALSE)
+```
+Notice that we didn???t get any repeats since I set replace = FALSE.
+
+In the preceding example, marbles was a character vector, but we can also use *sample* with a numeric vector. This example draws 5 numbers between 1 and 10 without replacement:
+```{r}
+sample(x = 1:10, size = 10, replace = FALSE)
+```
+
+If I instead set replace = TRUE I can get repeats of the same number:
+```{r}
+sample(x = 1:10, size = 10, replace = TRUE)
+```
+
+###Dice Rolls with sample
+Probability theory was initially developed in the 16th and 17th centuries to solve problems involving gambling games. Many of these problems involved rolling some number of fair, six-sided dice. We can simulate one such die roll in R as follows:
+```{r}
+sample(1:6, size = 1, replace = TRUE)
+```
+Rolling one die is a pretty boring example, but we can use it to build up more interesting ones. What if we wanted to roll two fair, six-sided dice and compute their sum?
+```{r}
+sample(1:6, size = 1, replace = TRUE) + sample(1:6, size = 1, replace = TRUE)
+```
+It turns out that there???s a much easier way:
+```{r}
+dice.roll <- sample(1:6, size = 2, replace = TRUE)
+sum(dice.roll)
+```
+Or, in a single command:
+```{r}
+sum(sample(1:6, size = 2, replace = TRUE))
+```
+###replicate
+We now know how to use *sample* to carry out various random experiments. The question is, how can we repeat these experiments? In some situations, merely using sample is enough. For example, I could repeat the experiment of rolling a single fair die 20 times as follows:
+```{r}
+die.rolls <- sample(x = 1:6, size = 20, replace = TRUE)
+die.rolls
+```
+But if I wanted to repeat the experiment involving the sum of two dice there wouldn???t be an easy way to do this using *sample*. Instead we???ll turn to a function called *replicate* whose sole purpose is to repeat some other R command over and over and store the results in a convenient format.
+
+For those of you who have taken some computer science courses, *replicate* is essentially a wrapper to a family of functions called **apply* that implement common tasks involving for loops without explicitly using looping syntax. Using *replicate* for common tasks rather than explicit for loops makes your code more readable and makes it easier to get the output you want in the format you want.
+
+The easiest way to use *replicate* for Monte Carlo Simulation is as follows: 1. Write a function that does the simulation once. 2. Repeat the experiment using the command replicate and store the result.
+
+Let???s take this step-by-step and use rolling two dice as our example.
+
+##Step 1: Create a Function
+
+We can make a function to roll two fair, six-sided dice and return their sum as follows:
+```{r}
+two.dice <- function(){
+  dice <- sample(1:6, size = 2, replace = TRUE)
+  return(sum(dice))
+}
+```
+Note that this particular function doesn???t take any arguments but we still need the parentheses when creating the function. It???s not uncommon to encounter functions that don???t take any arguments in code for Monte Carlo Simulations.
+
+##Step 2: Call The Function Repeatedly Using replicate
+
+To use *replicate*, we need to specify two arguments: n tells R how many times we want to repeat something and expr is the R command we want to repeat. For example:
+```{r}
+## n = 20, expr = two.dice()
+replicate(20, two.dice())
+```
+##  [1]  8  5 10 11  8  4  6  9  6 11  7  9  7  9  4  5  8 12  4  4
+**Note:** if the function we use as the argument expr returns a scalar (i.e. a single value), then replicate will return a vector. If our function returns a vector (the same length every replication), *replicate* will return a matrix ??? one column for each replication, and rows equal to the length of the output of each experiment.
+```{r}
+replicate(10, sample(1:10, 1, replace = FALSE))
+```
+```{r}
+replicate(10, sample(1:10, 5, replace = FALSE))
+```
+Now let???s try writing a slightly more general version of the two.dice function so we can see how to use *replicate* with a function that takes its own arguments. The function dice.sum takes one argument n.dice that specifies how many six-sided dice we will roll and sum:
+```{r}
+dice.sum <- function(n.dice){
+  dice <- sample(1:6, size = n.dice, replace = TRUE)
+  return(sum(dice))
+}
+replicate(50, dice.sum(3))
+```
+An even more general version of the function two.dice called my.dice.sum that takes two arguments: n.sides tells how many sides each die has and n.dice tells how many dice we roll. For example if n.sides = 4 and n.dice = 3, we???re rolling three four-sided dice, i.e., dice with sides numbered 1-4. Using *replicate* to simulate the sum of five four-sided dice a total of 100 times:
+```{r}
+my.dice.sum <- function(n.dice, n.sides){
+  dice <- sample(1:n.sides, size = n.dice, replace = TRUE)
+  return(sum(dice))
+}
+replicate(100, my.dice.sum(3,4))
+```
+
+###Approximating Probabilities
+Now, let???s use R to roll two dice a large number of times. We???ll start with 100:
+```{r}
+roll <- replicate(100000, two.dice())
+```
+Notice that I stored the result in a vector called *roll*. When calculating probabilities, we???re not interested in each of the outcomes, but their relative frequencies. Using the table function, we can summarize the result as follows:
+```{r}
+table(roll)
+```
+This gives us the frequency of every outcome. To convert this to relative frequencies, we need to divide by the number of times we carried out the experiment
+```{r}
+table(roll)/length(roll)
+```
+The function plot has many special features, one of which is that it knows what to do if you feed it a table as an input. Here???s a plot of our result:
+```{r}
+plot(table(roll), xlab = 'Sum', ylab = 'Frequency', main = '100000 Rolls of 2 Fair Dice')
+```
+Or expressed in relative frequencies:
+```{r}
+plot(table(roll)/length(roll), xlab = 'Sum', ylab = 'Relative Frequency', main = '100000 Rolls of 2 Fair Dice')
+```
+###More Complicated Probabilities
+Suppose I wanted to know the probability of getting a 9 or higher when rolling two dice. How could I use the simulation results from above to calculate this?
+
+The answer is logical conditions. Here???s an example to refresh your memory:
+```{r}
+z <- c(12, 6, 3, 7, 10, 9, 3)
+z >= 9
+```
+Notice that R has returned a vector of TRUE and FALSE where TRUE indicates that the corresponding value is 9 or above. Here???s the neat trick: for doing arithmetic, R treats TRUE like 1 and FALSE like 0. For example:
+```{r}
+TRUE + TRUE
+```
+```{r}
+FALSE * 6
+```
+Using this idea, we can count up the number of elements in the vector z that are at least 9 as follows:
+```{r}
+sum(z >= 9)
+```
+To turn this into a proportion, just divide by the length of z
+```{r}
+sum(z >= 9)/length(z)
+```
+So, how can we calculate the probability of getting at least a 9 when rolling two dice? So all we need to do is count up the number of elements of this vector that satisfy the condition and divide by the total number of elements:
+```{r}
+roll <- replicate(1000, two.dice())
+sum(roll >= 9)/length(roll)
+```
+Use the same idea to calculate the probability of getting at most 4 when rolling two fair, six-sided dice.
+```{r}
+sum(roll <= 4)/length(roll)
+```
+To calculate probabilities of more complicated conditions, we can combine the ideas from above with the R commands for AND, namely &, and OR, namely |.
+
+Here???s a simple example using the vector z from above. The following expression will be TRUE for each element of z that is between 7 and 10 inclusive:
+```{r}
+(7 <= z) & (z <= 10)
+```
+and we can calculate the proprotion of elements between 7 and 10 as follows:
+```{r}
+sum((7 <= z) & (z <= 10))/length(z)
+```
+To calculate the proportion of elements in z that are either greater than 10 or less than 7, we use | as follows:
+```{r}
+sum((z > 10) | (z < 7))/length(z)
+```
+Using this idea, we can calculate the probability of getting a sum between 6 and 8 inclusive
+```{r}
+sum((6 <= roll) & (roll <= 8))/length(roll)
+```
+and sum below 6 or above 8, exclusive as follows
+```{r}
+sum((roll < 6) | (roll > 8))/length(roll)
+```
+
+### Passadieci
+There is an old Italian gambling game called **Passadieci**, in which the goal is to get at least 11 when three fair, six-sided dice are thrown. The game was famously studied by Galileo at the behest of the Grand Duke of Tuscany, making it one of the earliest examples of the rigorous study of probability theory. Using your function *my.dice.sum* from above and replicate, simulate 100,000 replications of this game and store them in a vector called *passadieci*. Use it to answer the following questions:
+
+1. What is the probability of winning the game? 
+2. Which is more likely when throwing three dice: an 11 or a 12? 
+3. What is the probability of getting a sum no greater than 7 or no less then 15 when throwing three dice? 
+4. A plot of the simulated probabilities of each possible sum when throwing three fair, six-sided dice.
+```{r}
+## 1)
+passadieci <- replicate(100000, my.dice.sum(n.dice = 3, n.sides = 6))
+sum(passadieci >= 11)/length(passadieci)
+```
+```{r}
+## 2)
+sum(passadieci == 11)/length(passadieci)
+```
+```{r}
+## 2)
+sum(passadieci == 12)/length(passadieci)
+```
+```{r}
+## 3)
+sum((passadieci <= 7) | (passadieci >= 15))/length(passadieci)
+```
+```{r}
+plot(table(passadieci)/length(passadieci), xlab = 'Sum', 
+     ylab = 'Relative Frequency', main = 'Passadieci Simulation: 100000 Throws')
+```
+
+###Craps
+Throwing the dice in craps is an experiment that generates events such as occurrences of certain numbers on the dice, obtaining a certain sum of the shown numbers, and obtaining numbers with certain properties (less than a specific number, higher than a specific number, even, uneven, and so on). The sample space of such an experiment is $\Omega = \{1, 2, 3, 4, 5, 6\}$ for rolling one die or $\{(1, 1), (1, 2), ..., (1, 6), (2, 1), (2, 2), ..., (2, 6), ..., (6, 1), (6, 2), ..., (6, 6)\}$ for rolling two dice. The latter is a set of ordered pairs and counts 6 x 6 = 36 elements. The events can be identified with sets, namely parts of the sample space. For example, the event occurrence of an even number is represented by the following set in the experiment of rolling one die: $A = \{2, 4, 6\}$.
+
+###Roulette
+Spinning the roulette wheel is an experiment whose generated events could be the occurrence of a certain number, of a certain color or a certain property of the numbers (low, high, even, uneven, from a certain row or column, and so on). The sample space of the experiment involving spinning the roulette wheel is the set of numbers the roulette holds: {1, 2, 3, ..., 36, 0, 00} for the American roulette, or $ \Omega = \{1, 2, 3, ..., 36, 0\}$ for the European. The event occurrence of a red number is represented by the set $ R = \{1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36\}$. These are the numbers inscribed in red on the roulette wheel and table.
+
+###Blackjack
+Dealing cards in blackjack is an experiment that generates events such as the occurrence of a certain card or value as the first card dealt, obtaining a certain total of points from the first two cards dealt, exceeding 21 points from the first three cards dealt, and so on. In card games we encounter many types of experiments and categories of events. Each type of experiment has its own *sample space*. For example, the experiment of dealing the first card to the first player has as its sample space the set of all 52 cards (or 104, if played with two decks). The experiment of dealing the second card to the first player has as its sample space the set of all 52 cards (or 104), less the first card dealt. The experiment of dealing the first two cards to the first player has as its sample space a set of ordered pairs, namely all the 2-size arrangements of cards from the 52 (or 104). In a game with one player, the event the player is dealt a card of 10 points as the first dealt card is represented by the set of cards $\{10???, 10???, 10???, 10???, J???, J???, J???, J???, Q???, Q???, Q???, Q???, K???, K???, K???, K???\}$. The event the player is dealt a total of five points from the first two dealt cards is represented by the set of 2-size combinations of card values {(A, 4), (2, 3)}, which in fact counts 4 x 4 + 4 x 4 = 32 combinations of cards (as value and symbol).
+
+###Lottery
+In 6/49 lottery, the experiment of drawing six numbers from the 49 generates events such as drawing six specific numbers, drawing five numbers from six specific numbers, drawing four numbers from six specific numbers, drawing at least one number from a certain group of numbers, etc. The sample space here is the set of all 6-size combinations of numbers from the 49.
+
+
+In draw poker, the experiment of dealing the initial five card hands generates events such as dealing at least one certain card to a specific player, dealing a pair to at least two players, dealing four identical symbols to at least one player, and so on. The sample space in this case is the set of all 5-card combinations from the 52 (or the deck used).
+Dealing two cards to a player who has discarded two cards is another experiment whose sample space is now the set of all 2-card combinations from the 52, less the cards seen by the observer who solves the probability problem. For example, if you are in play in the above situation and want to figure out some odds regarding your hand, the sample space you should consider is the set of all 2-card combinations from the 52, less the three cards you hold and less the two cards you discarded. This sample space counts the 2-size combinations from 47.
+
+
+
+

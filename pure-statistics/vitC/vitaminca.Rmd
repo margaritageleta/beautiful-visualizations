@@ -1,0 +1,51 @@
+---
+title: "VitaminaC"
+output: html_document
+---
+```{r warning=FALSE, comment=FALSE}
+dd<-read.csv2("vitc.csv")
+
+library(car)
+library(emmeans)
+library(tables)
+#library("RcmdrMisc")
+head(dd)
+```
+```{r warning=FALSE, comment=FALSE}
+scatterplot(log(vitc)~week+treat:week, dd)
+```
+```{r warning=FALSE, comment=FALSE}
+mm<-lm(log(vitc)~week+treat:week, dd)
+scatterplot(predict(mm)~week|treat, dat=dd)
+```
+```{r warning=FALSE, comment=FALSE}
+Anova(mm)
+```
+
+```{r}
+(emmt<-emmeans(mm,~treat|week, at=list(week=c(0))))
+```
+```{r}
+print(pairs(emmt))
+```
+Surt que tots son no significatius.
+
+
+```{r}
+(emmm<-emtrends(mm,~treat, var="week"))
+print(pairs(emmm))
+```
+
+```{r warning=FALSE, comment=FALSE}
+CLD(emmm)
+```
+
+
+```{r warning=FALSE, comment=FALSE}
+pairs(emmm)
+```
+
+```{r warning=FALSE, comment=FALSE}
+plot(fitted(mm), resid(mm))
+```
+
